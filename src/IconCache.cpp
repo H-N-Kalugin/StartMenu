@@ -1,4 +1,5 @@
 #include "IconCache.h"
+#include "Skin.h"
 #include "Config.h"
 #include "Demo.h"
 #include "Shell.h"
@@ -260,6 +261,15 @@ IconCache::Backdrop IconCache::backdrop(const Item& item)
             b.plate = QColor(median(rs), median(gs), median(bs));
         else
             b.plate = QColor(median(all_r), median(all_g), median(all_b));
+        // Нет своей подложки (одна фигура на прозрачном фоне, как буква «A» у ArtCraft): цвет «по краю» — это цвет самой
+        // фигуры, и она бы слилась с плиткой. Тогда подложка — тёмная с лёгким оттенком фигуры (для тёмных фигур — светлая).
+        const qreal coverage = qreal(all_r.size()) / qreal((x1 - x0 + 1) * (y1 - y0 + 1));
+        if (coverage < 0.6)
+        {
+            const QColor glyph(median(all_r), median(all_g), median(all_b));
+            const bool darkGlyph = glyph.lightnessF() < 0.35;
+            b.plate = darkGlyph ? Skin::mix(QColor(236, 238, 244), glyph, 0.12) : Skin::mix(QColor(30, 32, 40), glyph, 0.18);
+        }
     }
     // Мягкий фон: иконка на своей подложке, сжатая до 4×4 — при растягивании даёт плавное пятно её цветов.
     QImage onPlate(img.size(), QImage::Format_ARGB32_Premultiplied);
@@ -491,7 +501,15 @@ void IconCache::pruneExact()
 
 QString IconCache::diskCacheDir()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/icons");
+    // Номер в имени папки — версия формата. Прошлая папка «icons» хранила иконки Store-приложений с цветной
+    // бахромой по краю; новая начинает с чистого листа, а старую один раз удаляем.
+    const QString base = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    static const bool oldRemoved = [&base] {
+        QDir(base + QStringLiteral("/icons")).removeRecursively();
+        return true;
+    }();
+    Q_UNUSED(oldRemoved)
+    return base + QStringLiteral("/icons3");
 }
 
 void IconCache::clearDiskCache()

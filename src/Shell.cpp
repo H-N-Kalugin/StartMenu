@@ -44,9 +44,32 @@ namespace
         const int w = ds.dsBm.bmWidth;
         const int h = ds.dsBm.bmHeight;
         const bool bottomUp = ds.dsBmih.biHeight > 0;
+        // Иконки приложений из Store приходят с обычной (непремультиплицированной) альфой, хотя Shell обещает обратное:
+        // цвет в краевых пикселях ярче их прозрачности. Если читать их как премультиплицированные, по краю иконки
+        // появляется цветная «бахрома». Проверяем пиксели и выбираем верный формат.
+        bool straightAlpha = false;
+        {
+            const auto* base = static_cast<const uchar*>(ds.dsBm.bmBits);
+            for (int y = 0; y < h && !straightAlpha; ++y)
+            {
+                const auto* line = reinterpret_cast<const QRgb*>(base + qsizetype(y) * ds.dsBm.bmWidthBytes);
+                for (int x = 0; x < w; ++x)
+                {
+                    const QRgb c = line[x];
+                    const int a = qAlpha(c);
+                    if (qRed(c) > a || qGreen(c) > a || qBlue(c) > a)
+                    {
+                        straightAlpha = true;
+                        break;
+                    }
+                }
+            }
+        }
         QImage img(static_cast<const uchar*>(ds.dsBm.bmBits), w, h, ds.dsBm.bmWidthBytes,
-                   QImage::Format_ARGB32_Premultiplied);
+                   straightAlpha ? QImage::Format_ARGB32 : QImage::Format_ARGB32_Premultiplied);
         img = bottomUp ? img.mirrored(false, true) : img.copy(); // copy — отвязываемся от памяти HBITMAP
+        if (straightAlpha)
+            img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
         // Старые иконки бывают совсем без альфы — тогда считаем картинку непрозрачной.
         bool hasAlpha = false;

@@ -741,6 +741,10 @@ int main(int argc, char* argv[])
                     s.showLabels = false;
                 else if (app.arguments().contains(QStringLiteral("--labels")))
                     s.showLabels = true;
+                // --tile-fill N — заливка плиток: 0 нет, 1 цвет иконки, 2 размытая иконка (только в памяти)
+                const int ti = int(app.arguments().indexOf(QStringLiteral("--tile-fill")));
+                if (ti >= 0 && ti + 1 < app.arguments().size())
+                    s.tileFill = std::clamp(app.arguments()[ti + 1].toInt(), 0, 2);
                 // --light / --dark — тема (только в памяти)
                 if (app.arguments().contains(QStringLiteral("--light")))
                     s.theme = 1;

@@ -11,7 +11,7 @@
 3. Запусти `build\StartMenu.exe`. Иконка появится в трее.
 
 ## Установщик для передачи
-`pwsh -File installer\make-installer.ps1` → `dist\StartMenu-1.0.0.exe` (~11 МБ, собирается встроенным в Windows IExpress).
+`pwsh -File installer\make-installer.ps1` → `dist\StartMenu-<версия>.exe` (~11 МБ, собирается встроенным в Windows IExpress).
 Ставит для текущего пользователя без прав администратора в `%LOCALAPPDATA%\Programs\…`:
 ярлыки «StartMenu» и «Настройки StartMenu» в меню «Пуск», автозапуск, запись в «Установленных приложениях»
 (удаление — оттуда или `uninstall.ps1` в папке программы). Библиотеки Visual C++ лежат рядом — ставить vc_redist не нужно.
