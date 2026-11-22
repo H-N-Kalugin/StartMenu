@@ -11,6 +11,7 @@
 #include <QAbstractButton>
 #include <QApplication>
 #include <QCheckBox>
+#include "SegSwitch.h"
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDir>
@@ -478,12 +479,12 @@ QWidget* WelcomeWindow::buildStylePage()
     v->addSpacing(6);
 
     auto* bottom = new QHBoxLayout;
-    m_labels = new QCheckBox(TXT("Подписи под плитками"));
+    m_labels = new SegSwitch(QString(), TXT("С подписями"), TXT("Без подписей"));
     m_labels->setToolTip(TXT("Название приложения под значком. Без подписей плитки выглядят чище — значок по центру."));
     connect(m_labels, &QCheckBox::toggled, this, &WelcomeWindow::refreshPreviews);
     bottom->addWidget(m_labels);
     bottom->addSpacing(16);
-    m_fill = new QCheckBox(TXT("Заливать плитки цветом иконки"));
+    m_fill = new SegSwitch(TXT("Заливать плитки цветом иконки"));
     m_fill->setToolTip(TXT("Фон каждой плитки — в цвет её иконки. Потом можно выбрать и «размытую иконку»."));
     connect(m_fill, &QCheckBox::toggled, this, &WelcomeWindow::refreshPreviews);
     bottom->addWidget(m_fill);
@@ -550,14 +551,14 @@ QWidget* WelcomeWindow::buildAppsPage()
     v->addWidget(m_apps, 1);
 
     // То, что человек уже закрепил в «Пуске» Windows, — сразу к нам (по умолчанию да)
-    m_windowsPins = new QCheckBox(TXT("Перенести то, что закреплено в «Пуске» Windows"));
+    m_windowsPins = new SegSwitch(TXT("Перенести то, что закреплено в «Пуске» Windows"));
     m_windowsPins->setChecked(true);
     v->addWidget(m_windowsPins);
 
     const QString script = start11Script();
     if (!script.isEmpty())
     {
-        m_start11 = new QCheckBox(TXT("Перенести группы и плитки из Start11"));
+        m_start11 = new SegSwitch(TXT("Перенести группы и плитки из Start11"));
         m_start11->setChecked(true);
         v->addWidget(m_start11);
     }
@@ -617,7 +618,7 @@ QWidget* WelcomeWindow::buildDonePage()
     }
     v->addSpacing(8);
     // История буфера обмена — только с явного согласия
-    m_clipboard = new QCheckBox(TXT("Запоминать, что я копирую (история буфера обмена в меню)"));
+    m_clipboard = new SegSwitch(TXT("Запоминать, что я копирую (история буфера обмена в меню)"));
     m_clipboard->setToolTip(TXT("Хранится только на этом компьютере. Пароли из менеджеров паролей не сохраняются. Можно выключить в настройках."));
     v->addWidget(m_clipboard);
     v->addSpacing(6);

@@ -9,6 +9,7 @@
 #include "Updater.h"
 
 #include <QCheckBox>
+#include "SegSwitch.h"
 #include <QDesktopServices>
 #include <QUrl>
 #include <QCloseEvent>
@@ -259,7 +260,7 @@ QSpinBox* SettingsWindow::spin(int Settings::* field, int min, int max, const QS
 
 QCheckBox* SettingsWindow::check(const QString& text, bool Settings::* field)
 {
-    auto* c = new QCheckBox(text);
+    auto* c = new SegSwitch(text);
     m_refreshers.append([c, field] { c->setChecked(Settings::get().*field); });
     connect(c, &QCheckBox::toggled, this, [this, field](bool on) {
         if (m_loading)
@@ -367,7 +368,7 @@ QWidget* SettingsWindow::buildTilesTab()
     f->addRow(TXT("Размер ячейки (без адаптивной)"), cellRow);
     m_enablers.append([cellRow] { cellRow->setEnabled(!Settings::get().adaptive); });
     // Общий переключатель подписей главнее частных: включили — видны у всех, выключили — скрыты у всех.
-    auto* labels = new QCheckBox(TXT("Подписи на плитках (у всех групп и плиток)"));
+    auto* labels = new SegSwitch(TXT("Подписи на плитках (у всех групп и плиток)"));
     m_refreshers.append([labels] { labels->setChecked(Settings::get().showLabels); });
     connect(labels, &QCheckBox::toggled, this, [this](bool on) {
         if (m_loading)
@@ -517,7 +518,7 @@ QWidget* SettingsWindow::buildBehaviorTab()
     reserve->setToolTip(TXT("Меню держится наготове, и Windows запрещено выгружать его память на диск."));
     v->addWidget(reserve);
 
-    auto* autostart = new QCheckBox(TXT("Запускать вместе с Windows"));
+    auto* autostart = new SegSwitch(TXT("Запускать вместе с Windows"));
     autostart->setChecked(QSettings(kRunKey, QSettings::NativeFormat).contains("StartMenu"));
     connect(autostart, &QCheckBox::toggled, this, [](bool on) {
         QSettings reg(kRunKey, QSettings::NativeFormat);
@@ -576,7 +577,7 @@ QWidget* SettingsWindow::buildBehaviorTab()
     connect(folder, &QPushButton::clicked, this, [] {
         WinShell::open(QFileInfo(Settings::filePath()).absolutePath());
     });
-    auto* verb = new QCheckBox(TXT("Пункт «Закрепить в StartMenu» в контекстном меню Проводника"));
+    auto* verb = new SegSwitch(TXT("Пункт «Закрепить в StartMenu» в контекстном меню Проводника"));
     verb->setChecked(PinSync::explorerVerbInstalled());
     verb->setToolTip(TXT("В Windows 11 он в «Показать дополнительные параметры» (Shift+F10)"));
     connect(verb, &QCheckBox::toggled, this, [](bool on) { PinSync::setExplorerVerb(on); });
