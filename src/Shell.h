@@ -14,6 +14,7 @@ namespace WinShell
     void showInFolder(const QString& path);
     void openRunDialog();
     bool isLocalFile(const QString& path);         // false для shell:AppsFolder\... и несуществующих путей
+    QString mediaSourcePath(const QString& appId); // источник звука (SourceAppUserModelId) → путь, из которого грузится значок; пусто — не нашли
     QString fileLocation(const Item& item);        // настоящий файл или папка программы (для «Открыть расположение файла»); пусто — не найти
 
     QPixmap loadIcon(const QString& path, int px); // пустой QPixmap, если не вышло

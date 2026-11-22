@@ -65,7 +65,10 @@ struct MediaPaint
 {
     QRect r;
     QString title, artist;
-    QImage art;                // обложка; пустая — рисуем ноту
+    QImage art;                // обложка; пустая — рисуем значок приложения-источника на размытом фоне из него же
+    QImage appIcon;            // значок источника звука (Spotify, браузер…) или наш, если не нашли
+    QImage appSoft;            // его размытый фон 32×32
+    QColor appPlate;           // цвет подложки значка
     bool playing = false, canPrev = true, canNext = true;
     int hover = -1;            // Skin::MediaPart под курсором
     int pressed = -1;

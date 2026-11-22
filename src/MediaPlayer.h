@@ -61,6 +61,10 @@ private:
     QString m_title, m_artist, m_key;
     bool m_sawPause = false; // после ✕ музыка уже стояла на паузе — следующее «играет» снова покажет плеер
     QImage m_art, m_artBlur;
+    QString m_app;                         // источник звука (Spotify.exe, Chrome…)
+    QImage m_appIcon, m_appSoft;           // его значок и размытый фон — показываем вместо отсутствующей обложки
+    QColor m_appPlate;
+    void resolveApp(const QString& appId);
     bool m_playing = false, m_canPrev = false, m_canNext = false, m_canSeek = false;
     qint64 m_positionMs = 0, m_durationMs = 0;
     QElapsedTimer m_posClock;

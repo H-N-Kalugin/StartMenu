@@ -220,6 +220,15 @@ IconCache::Backdrop IconCache::backdrop(const Item& item)
     const QImage base = anyImage(item);
     if (base.isNull())
         return {};
+    const Backdrop b = makeBackdrop(base);
+    m_backdrops.insert(source, b);
+    return b;
+}
+
+IconCache::Backdrop IconCache::makeBackdrop(const QImage& base)
+{
+    if (base.isNull())
+        return {};
     const QImage img = downscale(base, 48).convertToFormat(QImage::Format_ARGB32);
 
     // Рамка непрозрачной части иконки
@@ -324,7 +333,6 @@ IconCache::Backdrop IconCache::backdrop(const Item& item)
     if (!b.soft.isNull())
         b.softBottom = QColor(b.soft.copy(0, b.soft.height() * 2 / 3, b.soft.width(), b.soft.height() / 3)
                                       .scaled(1, 1, Qt::IgnoreAspectRatio, Qt::SmoothTransformation).pixel(0, 0));
-    m_backdrops.insert(source, b);
     return b;
 }
 

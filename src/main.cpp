@@ -1,5 +1,6 @@
 #include <QAction>
 #include <functional>
+#include <mutex>
 #include "Lang.h"
 #include <QClipboard>
 #include <QApplication>
@@ -37,6 +38,7 @@
 #include "StartWindow.h"
 #include "Theme.h"
 #include "Welcome.h"
+#include "MediaSession.h"
 #include "Workspace.h"
 #include "IconCache.h"
 #include "Updater.h"
@@ -681,6 +683,25 @@ int main(int argc, char* argv[])
             QFile out(QString::fromLocal8Bit(argv[i + 2]));
             if (out.open(QIODevice::WriteOnly | QIODevice::Text))
                 out.write(log.join(QLatin1Char('\n')).toUtf8());
+            return 0;
+        }
+        if (qstrcmp(argv[i], "--media-info") == 0 && i + 1 < argc)
+        {
+            // Служебное: что сейчас играет в Windows (источник, трек, есть ли обложка). --media-info <файл-результат>
+            QCoreApplication app(argc, argv);
+            std::mutex mu;
+            Media::State last;
+            Media::Watcher w([&](const Media::State& s) {
+                std::lock_guard<std::mutex> lock(mu);
+                last = s;
+            });
+            QThread::msleep(3500);
+            std::lock_guard<std::mutex> lock(mu);
+            QFile out(QString::fromLocal8Bit(argv[i + 1]));
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text))
+                out.write(QStringLiteral("present=%1 app=%2 title=%3 artist=%4 art_bytes=%5")
+                              .arg(last.present).arg(QString::fromStdWString(last.app), QString::fromStdWString(last.title),
+                                                     QString::fromStdWString(last.artist)).arg(last.art.size()).toUtf8());
             return 0;
         }
         if (qstrcmp(argv[i], "--file-location") == 0 && i + 2 < argc)

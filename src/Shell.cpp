@@ -28,6 +28,7 @@
 #include <knownfolders.h>
 #include <shlguid.h>
 #include <appmodel.h>
+#include <tlhelp32.h>
 #include <propkey.h>
 #include <propsys.h>
 #endif
@@ -171,6 +172,43 @@ void showInFolder(const QString& path)
         return;
     }
     QProcess::startDetached(QStringLiteral("explorer.exe"), {QStringLiteral("/select,"), QDir::toNativeSeparators(path)});
+}
+
+// Источник звука Windows называет по-разному: «Spotify.exe» (имя программы), «Chrome» или «MSEdge» (пункты списка «Все приложения»),
+// «Семейство!Приложение» (Store). Возвращаем то, из чего loadIcon достанет значок.
+QString mediaSourcePath(const QString& appId)
+{
+    if (appId.isEmpty())
+        return {};
+#ifdef _WIN32
+    if (appId.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive))
+    {
+        // Программа с таким именем уже запущена (раз играет) — берём её файл
+        QString found;
+        const HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snap != INVALID_HANDLE_VALUE)
+        {
+            PROCESSENTRY32W pe = {sizeof(pe)};
+            for (BOOL ok = Process32FirstW(snap, &pe); ok && found.isEmpty(); ok = Process32NextW(snap, &pe))
+                if (QString::fromWCharArray(pe.szExeFile).compare(appId, Qt::CaseInsensitive) == 0)
+                {
+                    if (HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pe.th32ProcessID))
+                    {
+                        wchar_t path[MAX_PATH * 2] = {};
+                        DWORD len = DWORD(std::size(path));
+                        if (QueryFullProcessImageNameW(h, 0, path, &len))
+                            found = QString::fromWCharArray(path, int(len));
+                        CloseHandle(h);
+                    }
+                }
+            CloseHandle(snap);
+        }
+        return found;
+    }
+    return QStringLiteral("shell:AppsFolder\\") + appId;
+#else
+    return {};
+#endif
 }
 
 // Где лежит то, что запускает плитка: у ярлыка — его цель (exe), у программы из списка «Все приложения» — её файл,

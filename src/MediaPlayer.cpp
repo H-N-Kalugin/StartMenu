@@ -3,6 +3,9 @@
 #include "MediaSession.h"
 #include "Settings.h"
 #include "Config.h"
+#include "AppIcon.h"
+#include "IconCache.h"
+#include "Shell.h"
 #include "Demo.h"
 #include "Skin.h"
 #include "Theme.h"
@@ -99,9 +102,27 @@ void MediaPlayer::setWindowShown(bool shown)
         m_watcher->setActive(shown);
 }
 
+// Значок источника звука: берём у Windows (Spotify — его логотип, браузер — значок браузера). Не нашли — наша иконка.
+void MediaPlayer::resolveApp(const QString& appId)
+{
+    m_app = appId;
+    QImage icon;
+    const QString path = WinShell::mediaSourcePath(appId);
+    if (!path.isEmpty())
+        icon = WinShell::loadIcon(path, 128).toImage();
+    if (icon.isNull())
+        icon = AppIcon::render(128);
+    const IconCache::Backdrop b = IconCache::makeBackdrop(icon);
+    m_appIcon = icon;
+    m_appSoft = b.soft;
+    m_appPlate = b.plate;
+}
+
 void MediaPlayer::apply(const Media::State& s)
 {
     const bool before = hasMedia();
+    if (const QString app = QString::fromStdWString(s.app); app != m_app || m_appIcon.isNull())
+        resolveApp(app);
     m_present = s.present;
     m_title = QString::fromStdWString(s.title);
     m_artist = QString::fromStdWString(s.artist);
@@ -126,7 +147,7 @@ void MediaPlayer::apply(const Media::State& s)
         if (qEnvironmentVariableIsSet("STARTMENU_NO_ART"))
             m_art = QImage(); // для снимков: показать заглушку вместо обложки
         // Размытая обложка для фона панели: сжать до крошечной и растянуть обратно — получается мягкое пятно.
-        m_artBlur = m_art.isNull() ? QImage()
+        m_artBlur = m_art.isNull() ? m_appSoft.scaled(240, 240, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)
                                    : m_art.scaled(24, 24, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)
                                          .scaled(240, 240, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
         // Цвета подсветки: левая и правая половины обложки, насыщеннее и светлее; без обложки — акцент.
@@ -233,6 +254,9 @@ void MediaPlayer::paintEvent(QPaintEvent*)
     m.title = m_title;
     m.artist = m_artist;
     m.art = m_art;
+    m.appIcon = m_appIcon;
+    m.appSoft = m_appSoft;
+    m.appPlate = m_appPlate;
     m.playing = m_playing;
     m.canPrev = m_canPrev;
     m.canNext = m_canNext;

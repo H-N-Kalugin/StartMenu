@@ -711,7 +711,7 @@ namespace
         }
     }
 
-    void paintArt(QPainter& p, const QRect& ar, const QImage& art, qreal radius, const MediaStyle& st)
+    void paintArt(QPainter& p, const QRect& ar, const QImage& art, qreal radius, const MediaStyle& st, const MediaPaint& m)
     {
         QPainterPath clip;
         clip.addRoundedRect(QRectF(ar), radius, radius);
@@ -725,34 +725,21 @@ namespace
             p.restore();
             return;
         }
-        // Нет обложки — нота: одна цельная векторная фигура (наклонная головка, ножка и флажок), без линий и кружков
-        p.fillPath(clip, st.hoverBg);
-        static const QPainterPath note = [] {
-            // Сетка 24×24. Головка — наклонный эллипс; ножка и флажок — один контур с плавной кривой.
-            QPainterPath head;
-            head.addEllipse(QRectF(-4.9, -3.5, 9.8, 7.0));
-            QTransform place;
-            place.translate(8.6, 18.0);
-            place.rotate(-24);
-            head = place.map(head);
-            QPainterPath stem;
-            stem.moveTo(11.1, 16.4);
-            stem.lineTo(11.1, 3.4);
-            stem.lineTo(13.2, 3.4);
-            stem.cubicTo(13.8, 7.4, 18.8, 8.0, 19.0, 13.2);
-            stem.cubicTo(17.2, 10.4, 15.0, 9.8, 13.2, 9.5);
-            stem.lineTo(13.2, 16.4);
-            stem.closeSubpath();
-            return head.united(stem);
-        }();
-        const QPointF c = QRectF(ar).center();
-        const qreal u = ar.height() / 24.0 * 0.95;
+        // Нет обложки: значок приложения-источника (у Spotify — его логотип) на размытом фоне из него же.
+        // Нашли значок не всегда — тогда рисуем нашу иконку (её передаёт плеер), так что пустого квадрата не бывает.
         p.save();
-        p.setRenderHint(QPainter::Antialiasing);
-        p.translate(c);
-        p.scale(u, u);
-        p.translate(-11.3, -12.6); // центр фигуры
-        p.fillPath(note, st.glyph);
+        p.setClipPath(clip);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        p.fillRect(ar, m.appPlate.isValid() ? m.appPlate : st.hoverBg);
+        if (!m.appSoft.isNull())
+            p.drawImage(QRectF(ar), m.appSoft);
+        if (!m.appIcon.isNull())
+        {
+            const int s = int(ar.height() * 0.66);
+            const QImage icon = scaledCached(m.appIcon, QSize(s * 2, s * 2), Qt::KeepAspectRatio);
+            const QRectF dst(ar.center().x() - s / 2.0, ar.center().y() - s / 2.0, s, s);
+            p.drawImage(dst, icon);
+        }
         p.restore();
     }
 
@@ -853,7 +840,7 @@ void Skin::paintMediaPlayer(QPainter& p, const MediaPaint& m) const
         p.drawRoundedRect(rf, st.radius, st.radius);
     }
 
-    paintArt(p, mediaPartRect(m.r, MediaArt), m.art, st.artRadius, st);
+    paintArt(p, mediaPartRect(m.r, MediaArt), m.art, st.artRadius, st, m);
 
     const QRect tr = mediaPartRect(m.r, MediaText);
     if (tr.width() > 20)
@@ -946,7 +933,7 @@ void Skin::paintMediaPanel(QPainter& p, const MediaPaint& m) const
     }
 
     if (!m.artBackground)
-        paintArt(p, rectOf(MediaArt), m.art, st.artRadius * 2, st);
+        paintArt(p, rectOf(MediaArt), m.art, st.artRadius * 2, st, m);
 
     // Трек
     const QRect tr = rectOf(MediaText);

@@ -32,6 +32,7 @@ public:
         QColor softBottom;        // средний цвет нижней трети soft
     };
     Backdrop backdrop(const Item& item);
+    static Backdrop makeBackdrop(const QImage& base); // то же по готовой картинке (для плеера: значок источника звука)
     static QPixmap letterIcon(const QString& name, int px);
     static QString diskCacheDir();
     static void pruneExact();            // убрать старые готовые размеры (в фоне)
