@@ -364,7 +364,8 @@ void AppList::itemMenu(int index, const QPoint& globalPos)
     QMenu menu(this);
     QAction* open = menu.addAction(TXT("Открыть"));
     QAction* admin = menu.addAction(TXT("Запуск от имени администратора"));
-    QAction* where = WinShell::isLocalFile(item.path) ? menu.addAction(TXT("Показать в папке")) : nullptr;
+    const QString whereFile = WinShell::fileLocation(item);
+    QAction* where = !whereFile.isEmpty() ? menu.addAction(TXT("Открыть расположение файла")) : nullptr;
     menu.addSeparator();
     QMenu* pin = menu.addMenu(TXT("Закрепить в группе"));
     for (int g = 0; g < groups.size(); ++g)
@@ -385,7 +386,7 @@ void AppList::itemMenu(int index, const QPoint& globalPos)
     }
     else if (chosen == where)
     {
-        WinShell::showInFolder(item.path);
+        WinShell::showInFolder(whereFile);
         emit launched();
     }
     else if (chosen->data().isValid())

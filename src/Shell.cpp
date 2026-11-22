@@ -15,6 +15,7 @@
 #include <QProcess>
 #include <QSettings>
 #include <algorithm>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -26,6 +27,9 @@
 #include <shobjidl.h>
 #include <knownfolders.h>
 #include <shlguid.h>
+#include <appmodel.h>
+#include <propkey.h>
+#include <propsys.h>
 #endif
 
 namespace
@@ -160,7 +164,79 @@ void open(const QString& target)
 
 void showInFolder(const QString& path)
 {
+    // Папка приложения из Microsoft Store (WindowsApps) — открываем её саму: «выбрать» её в родительской нельзя, туда нет доступа
+    if (QFileInfo(path).isDir() && path.contains(QStringLiteral("WindowsApps"), Qt::CaseInsensitive))
+    {
+        QProcess::startDetached(QStringLiteral("explorer.exe"), {QDir::toNativeSeparators(path)});
+        return;
+    }
     QProcess::startDetached(QStringLiteral("explorer.exe"), {QStringLiteral("/select,"), QDir::toNativeSeparators(path)});
+}
+
+// Где лежит то, что запускает плитка: у ярлыка — его цель (exe), у программы из списка «Все приложения» — её файл,
+// у приложения из Store — папка пакета. Пусто, если у этого пункта нет файла (сайт, калькулятор, страница «Параметров»).
+QString fileLocation(const Item& item)
+{
+    const QString p = item.path;
+    if (p.isEmpty() || p.startsWith(QStringLiteral("calc:")) || Config::isWebLink(p))
+        return {};
+    if (!p.startsWith(QStringLiteral("shell:"), Qt::CaseInsensitive))
+    {
+        if (!QFileInfo::exists(p))
+            return {};
+        if (p.endsWith(QStringLiteral(".lnk"), Qt::CaseInsensitive))
+        {
+            const QString target = locationOf(item);
+            if (QFileInfo::exists(target))
+                return target;
+        }
+        return p;
+    }
+#ifdef _WIN32
+    static const QString apps = QStringLiteral("shell:AppsFolder\\");
+    if (!p.startsWith(apps, Qt::CaseInsensitive))
+        return {};
+    const QString id = p.mid(apps.size());
+    if (id.contains(QLatin1Char('!')))
+    {
+        // Приложение из Store: «Семейство_издатель!Приложение» → папка установленного пакета
+        const QString family = id.section(QLatin1Char('!'), 0, 0);
+        UINT32 count = 0, bufLen = 0;
+        GetPackagesByPackageFamily(reinterpret_cast<PCWSTR>(family.utf16()), &count, nullptr, &bufLen, nullptr);
+        if (!count || !bufLen)
+            return {};
+        std::vector<PWSTR> names(count);
+        std::vector<WCHAR> buf(bufLen);
+        if (GetPackagesByPackageFamily(reinterpret_cast<PCWSTR>(family.utf16()), &count, names.data(), &bufLen, buf.data()) != ERROR_SUCCESS || !count)
+            return {};
+        UINT32 pathLen = 0;
+        GetPackagePathByFullName(names[0], &pathLen, nullptr);
+        if (!pathLen)
+            return {};
+        std::vector<WCHAR> path(pathLen);
+        if (GetPackagePathByFullName(names[0], &pathLen, path.data()) != ERROR_SUCCESS)
+            return {};
+        return QString::fromWCharArray(path.data());
+    }
+    // Обычная программа в списке: «{GUID папки}\путь\программа.exe» — locationOf раскрывает это в настоящий путь
+    const QString real = locationOf(item);
+    if (QFileInfo::exists(real))
+        return real;
+    // Программа с идентификатором вместо пути (например, «ai.storyteller.artcraft-launcher»): цель знает сама Windows
+    QString target;
+    IShellItem2* si = nullptr;
+    if (SUCCEEDED(SHCreateItemFromParsingName(reinterpret_cast<PCWSTR>(p.utf16()), nullptr, IID_PPV_ARGS(&si))))
+    {
+        LPWSTR path = nullptr;
+        if (SUCCEEDED(si->GetString(PKEY_Link_TargetParsingPath, &path)) && path)
+            target = QString::fromWCharArray(path);
+        CoTaskMemFree(path);
+        si->Release();
+    }
+    return !target.isEmpty() && QFileInfo::exists(target) ? QDir::toNativeSeparators(target) : QString();
+#else
+    return {};
+#endif
 }
 
 void openRunDialog()

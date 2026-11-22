@@ -1900,8 +1900,8 @@ void Workspace::tileMenu(int g, int t, const QPoint& globalPos)
         open = menu.addAction(TXT("Открыть"));
         if (!Config::isWebLink(tile.item.path))
             admin = menu.addAction(TXT("Запуск от имени администратора"));
-        if (WinShell::isLocalFile(tile.item.path))
-            where = menu.addAction(TXT("Показать в папке"));
+        if (!WinShell::fileLocation(tile.item).isEmpty())
+            where = menu.addAction(TXT("Открыть расположение файла"));
     }
     else
         open = menu.addAction(TXT("Открыть папку"));
@@ -1951,7 +1951,7 @@ void Workspace::tileMenu(int g, int t, const QPoint& globalPos)
     }
     if (chosen == where)
     {
-        WinShell::showInFolder(tile.item.path);
+        WinShell::showInFolder(WinShell::fileLocation(tile.item));
         emit launched();
         return;
     }
@@ -2278,7 +2278,7 @@ void Workspace::folderItemMenu(int child, const QPoint& globalPos)
     QMenu menu(this);
     QAction* open = menu.addAction(TXT("Открыть"));
     QAction* admin = menu.addAction(TXT("Запуск от имени администратора"));
-    QAction* where = WinShell::isLocalFile(item.path) ? menu.addAction(TXT("Показать в папке")) : nullptr;
+    QAction* where = !WinShell::fileLocation(item).isEmpty() ? menu.addAction(TXT("Открыть расположение файла")) : nullptr;
     menu.addSeparator();
     QAction* rename = menu.addAction(TXT("Переименовать…"));
     QAction* takeOut = menu.addAction(TXT("Вынести из папки"));
@@ -2293,7 +2293,7 @@ void Workspace::folderItemMenu(int child, const QPoint& globalPos)
         return launchItem(item, true);
     if (chosen == where)
     {
-        WinShell::showInFolder(item.path);
+        WinShell::showInFolder(WinShell::fileLocation(item));
         emit launched();
         return;
     }

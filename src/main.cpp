@@ -683,6 +683,17 @@ int main(int argc, char* argv[])
                 out.write(log.join(QLatin1Char('\n')).toUtf8());
             return 0;
         }
+        if (qstrcmp(argv[i], "--file-location") == 0 && i + 2 < argc)
+        {
+            // Служебное: где лежит файл у пункта меню. --file-location <путь пункта> <файл-результат>
+            QApplication app(argc, argv); // с графическим приложением инициализируется COM, как в самом меню
+            Item it;
+            it.path = QString::fromLocal8Bit(argv[i + 1]);
+            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text))
+                out.write(WinShell::fileLocation(it).toUtf8());
+            return 0;
+        }
         if (qstrcmp(argv[i], "--check-updates") == 0)
         {
             // Служебное: сразу спросить GitHub о новой версии (код выхода 0 — ответ получен)
