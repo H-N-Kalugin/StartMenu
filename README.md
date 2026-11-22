@@ -39,6 +39,10 @@ Labels or clean icons, glass or solid — colors, corners and size are yours too
 
 <img src="docs/images/variants.png" alt="With and without tile labels, over wallpaper and on a solid background" width="100%">
 
+Dark or light — or follow Windows automatically:
+
+<img src="docs/images/themes.png" alt="Dark and light theme" width="100%">
+
 ## 🎵 Music player
 
 Whatever plays in Windows — a separate panel above the menu with seeking and a beat glow.
