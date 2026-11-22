@@ -15,7 +15,7 @@ public:
     void placeIn(const QRect& area); // правый нижний угол области (с отступом)
 
 signals:
-    void dismissed();
+    void dismissed(bool dontShowAgain); // закрыли; true — поставили «Больше не показывать»
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -25,8 +25,9 @@ protected:
 private:
     QString m_version;
     QStringList m_bullets;
-    QRect m_button, m_link, m_close;
-    int m_hover = 0; // 1 — кнопка, 2 — ссылка, 3 — крестик
+    QRect m_button, m_link, m_close, m_check;
+    bool m_dontShow = false;
+    int m_hover = 0; // 1 — кнопка, 2 — ссылка, 3 — крестик, 4 — галочка
     void relayout();
 };
 

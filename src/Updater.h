@@ -21,5 +21,7 @@ std::optional<Info> visible();       // то же, но без версии, о 
 // Проверить в фоне. force=false — не чаще раза в 30 минут. done вызывается в главном потоке.
 void check(bool force, std::function<void(bool ok)> done = {});
 // Скачать установщик и запустить; не вышло — открыть страницу выпуска. done — в главном потоке.
-void install(const Info& info, std::function<void(bool ok)> done = {});
+// quiet — без окон и сообщений (для автообновления: меню само перезапустится)
+void install(const Info& info, std::function<void(bool ok)> done = {}, bool quiet = false);
+bool userIsFree(); // не игра на весь экран и не презентация — тогда можно ставить обновление молча
 }

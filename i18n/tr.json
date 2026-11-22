@@ -433,5 +433,9 @@
 "431": "Kendi simgemizle yükleyici, güncelleme denetimi her 30 dakikada",
 "432": "Anladım",
 "433": "Tüm değişiklikler",
-"434": "%1 sürümündeki yenilikler"
+"434": "%1 sürümündeki yenilikler",
+"435": "Güncellemeleri otomatik yükle (günde bir kez, oyun sırasında değil)",
+"436": "Yeni sürüm çıktığında program kendisi indirip kurar; menü birkaç saniyeliğine yeniden başlar. Tam ekran oyunda veya sunumda bunu yapmaz.",
+"437": "Güncellemeden sonra “Yenilikler”i göster",
+"438": "“Yenilikler”i bir daha gösterme"
 }

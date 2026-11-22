@@ -433,5 +433,9 @@
 "431": "Instalator z naszą ikoną, sprawdzanie aktualizacji co 30 minut",
 "432": "Jasne",
 "433": "Wszystkie zmiany",
-"434": "Co nowego w wersji %1"
+"434": "Co nowego w wersji %1",
+"435": "Instaluj aktualizacje automatycznie (raz dziennie, nie podczas gry)",
+"436": "Gdy pojawi się nowa wersja, program sam ją pobierze i zainstaluje; menu uruchomi się ponownie na kilka sekund. Nie robi tego podczas gry na pełnym ekranie ani prezentacji.",
+"437": "Pokazuj „Co nowego” po aktualizacji",
+"438": "Nie pokazuj więcej „Co nowego”"
 }

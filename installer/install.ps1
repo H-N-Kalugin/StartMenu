@@ -6,6 +6,8 @@ param(
     [switch]$NoLaunch     # не запускать после установки
 )
 $ErrorActionPreference = 'Stop'
+# Автообновление запускает установщик молча: сообщения не нужны, программа сама перезапустится
+if ($env:STARTMENU_QUIET -eq '1') { $Quiet = $true }
 Add-Type -AssemblyName System.Windows.Forms
 function Say([string]$text, [string]$icon = 'Information') {
     if (-not $Quiet) { [Windows.Forms.MessageBox]::Show($text, 'StartMenu', 'OK', $icon) | Out-Null }

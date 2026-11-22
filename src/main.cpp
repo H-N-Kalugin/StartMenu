@@ -504,10 +504,27 @@ namespace
         // Обновления: проверка не чаще раза в сутки (сама следит по времени последней проверки)
         QTimer updateTimer;
         // Новая версия: точка на значке трея и строка в его меню. Всплывающих уведомлений нет — чтобы не отвлекать.
-        auto refreshUpdateBadge = [&tray, &buildTrayMenu] {
+        // Автообновление (если включено): когда вышла новая версия, не чаще раза в ~сутки и не во время игры —
+        // скачиваем и ставим молча. Проверка новых версий идёт каждые 30 минут, а ставится не чаще раза в сутки.
+        auto autoInstall = [] {
+            const Settings& s = Settings::get();
+            if (!s.checkUpdates || !s.autoUpdate)
+                return;
+            const auto info = Updater::visible();
+            if (!info)
+                return;
+            const qint64 now = QDateTime::currentSecsSinceEpoch();
+            if (now - s.lastAutoUpdate < 20 * 3600 || !Updater::userIsFree())
+                return;
+            Settings::get().lastAutoUpdate = now;
+            Settings::get().save();
+            Updater::install(*info, {}, true);
+        };
+        auto refreshUpdateBadge = [&tray, &buildTrayMenu, autoInstall] {
             const bool has = Updater::visible().has_value();
             tray.setIcon(has ? AppIcon::iconWithDot() : AppIcon::icon());
             buildTrayMenu();
+            autoInstall();
         };
         auto checkUpdates = [&refreshUpdateBadge] {
             if (Settings::get().checkUpdates)

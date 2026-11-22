@@ -125,6 +125,9 @@ void Settings::load()
     checkUpdates = o["checkUpdates"].toBool(checkUpdates);
     hiddenUpdate = o["hiddenUpdate"].toString();
     lastSeenVersion = o["lastSeenVersion"].toString();
+    showWhatsNew = o["showWhatsNew"].toBool(true);
+    autoUpdate = o["autoUpdate"].toBool(false);
+    lastAutoUpdate = o["lastAutoUpdate"].toInteger();
     apply();
 }
 
@@ -160,6 +163,9 @@ void Settings::save() const
     o["checkUpdates"] = checkUpdates;
     o["hiddenUpdate"] = hiddenUpdate;
     o["lastSeenVersion"] = lastSeenVersion;
+    o["showWhatsNew"] = showWhatsNew;
+    o["autoUpdate"] = autoUpdate;
+    o["lastAutoUpdate"] = lastAutoUpdate;
     const FileLock lock;
     keepBackup(filePath());
     QSaveFile f(filePath());

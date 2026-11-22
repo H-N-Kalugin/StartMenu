@@ -433,5 +433,9 @@
 "431": "Programme d'installation avec notre icône, recherche de mises à jour toutes les 30 minutes",
 "432": "Compris",
 "433": "Tous les changements",
-"434": "Nouveautés de la version %1"
+"434": "Nouveautés de la version %1",
+"435": "Installer les mises à jour automatiquement (une fois par jour, pas pendant un jeu)",
+"436": "Quand une nouvelle version sort, le programme la télécharge et l'installe seul ; le menu redémarre quelques secondes. Rien n'est fait pendant un jeu en plein écran ou une présentation.",
+"437": "Afficher « Nouveautés » après une mise à jour",
+"438": "Ne plus afficher « Nouveautés »"
 }

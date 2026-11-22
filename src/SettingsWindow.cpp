@@ -678,6 +678,12 @@ QWidget* SettingsWindow::buildDataTab()
     auto* updCheck = check(TXT("Проверять обновления автоматически"), &Settings::checkUpdates);
     updCheck->setToolTip(TXT("Меню спрашивает у GitHub номер последней версии. Никакие данные о вас не отправляются."));
     v->addWidget(updCheck);
+    auto* autoInst = check(TXT("Устанавливать обновления автоматически (раз в сутки, не во время игры)"), &Settings::autoUpdate);
+    autoInst->setToolTip(TXT("Если вышла новая версия, программа сама скачает и поставит её; меню перезапустится на пару секунд. "
+                             "Не делает этого, пока вы в игре на весь экран или в презентации."));
+    v->addWidget(autoInst);
+    m_enablers.append([autoInst] { autoInst->setEnabled(Settings::get().checkUpdates); });
+    v->addWidget(check(TXT("Показывать «Что нового» после обновления"), &Settings::showWhatsNew));
     auto* updRow = new QHBoxLayout;
     auto* updState = new QLabel;
     auto* checkNow = new QPushButton(TXT("Проверить сейчас"));
@@ -787,6 +793,8 @@ void SettingsWindow::applyPreset(int index)
     const bool clipboardHistory = s.clipboardHistory, systemMonitor = s.systemMonitor;
     const bool showHints = s.showHints, checkUpdates = s.checkUpdates;
     const QString hiddenUpdate = s.hiddenUpdate, lastSeenVersion = s.lastSeenVersion;
+    const bool showWhatsNew = s.showWhatsNew, autoUpdate = s.autoUpdate;
+    const qint64 lastAutoUpdate = s.lastAutoUpdate;
     const int theme = s.theme;
     const QString linkBrowser = s.linkBrowser;
     const Settings::Position position = s.position;
@@ -811,6 +819,9 @@ void SettingsWindow::applyPreset(int index)
     s.checkUpdates = checkUpdates;
     s.hiddenUpdate = hiddenUpdate;
     s.lastSeenVersion = lastSeenVersion;
+    s.showWhatsNew = showWhatsNew;
+    s.autoUpdate = autoUpdate;
+    s.lastAutoUpdate = lastAutoUpdate;
     s.position = position;
     s.bottomGap = bottomGap;
     s.skin = skin;

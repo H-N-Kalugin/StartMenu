@@ -188,7 +188,13 @@ void check(bool force, std::function<void(bool)> done)
     }).detach();
 }
 
-void install(const Info& info, std::function<void(bool)> done)
+bool userIsFree()
+{
+    QUERY_USER_NOTIFICATION_STATE st = QUNS_ACCEPTS_NOTIFICATIONS;
+    return FAILED(SHQueryUserNotificationState(&st)) || st == QUNS_ACCEPTS_NOTIFICATIONS;
+}
+
+void install(const Info& info, std::function<void(bool)> done, bool quiet)
 {
     const QString page = info.page;
     if (info.installer.isEmpty() || !info.installer.startsWith(QStringLiteral("https://github.com/")))
@@ -198,13 +204,18 @@ void install(const Info& info, std::function<void(bool)> done)
         return;
     }
     const QString url = info.installer, version = info.version;
-    QThreadPool::globalInstance()->start([url, version, page, done] {
+    QThreadPool::globalInstance()->start([url, version, page, done, quiet] {
         const QString exe = QDir::tempPath() + QStringLiteral("/StartMenu-%1-setup.exe").arg(version);
         QFile::remove(exe);
+        // Установщик читает STARTMENU_QUIET из окружения — без окон и сообщений; запущенный процесс унаследует переменную
+        if (quiet)
+            SetEnvironmentVariableW(L"STARTMENU_QUIET", L"1");
         const bool ok = download(url, exe)
                         && reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", reinterpret_cast<LPCWSTR>(QDir::toNativeSeparators(exe).utf16()),
                                                                    nullptr, nullptr, SW_SHOWNORMAL)) > 32;
-        if (!ok)
+        if (quiet)
+            SetEnvironmentVariableW(L"STARTMENU_QUIET", nullptr);
+        if (!ok && !quiet) // молчаливое обновление не открывает браузер — просто попробует позже
             QMetaObject::invokeMethod(QCoreApplication::instance(), [page] { QDesktopServices::openUrl(QUrl(page)); },
                                       Qt::QueuedConnection);
         onMain(done, ok);

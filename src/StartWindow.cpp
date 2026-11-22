@@ -390,6 +390,13 @@ void StartWindow::maybeShowWhatsNew(bool force)
     const QString cur = Updater::currentVersion();
     if (!force && Settings::get().lastSeenVersion == cur)
         return;
+    if (!force && !Settings::get().showWhatsNew)
+    {
+        // Человек отключил карточку — версию просто запоминаем
+        Settings::get().lastSeenVersion = cur;
+        Settings::get().save();
+        return;
+    }
     const QStringList bullets = WhatsNew::bulletsFor(cur);
     if (bullets.isEmpty())
     {
@@ -404,10 +411,12 @@ void StartWindow::maybeShowWhatsNew(bool force)
     if (!m_whatsNew)
     {
         m_whatsNew = new WhatsNewCard(this);
-        connect(m_whatsNew, &WhatsNewCard::dismissed, this, [this, force] {
+        connect(m_whatsNew, &WhatsNewCard::dismissed, this, [this, force](bool dontShowAgain) {
             if (!force)
             {
                 Settings::get().lastSeenVersion = Updater::currentVersion();
+                if (dontShowAgain)
+                    Settings::get().showWhatsNew = false; // обновления приходят, а «Что нового» больше не показываем
                 Settings::get().save();
             }
         });

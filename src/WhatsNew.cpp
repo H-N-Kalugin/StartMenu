@@ -55,9 +55,12 @@ void WhatsNewCard::relayout()
     int h = kPad + QFontMetrics(titleF).height() + 12;
     for (const QString& b : m_bullets)
         h += QFontMetrics(bodyF).boundingRect(QRect(0, 0, textW, 4000), Qt::TextWordWrap, b).height() + kGap;
-    h += 6;
-    const int rowH = 30;
+    h += 2;
     const QFontMetrics fm(bodyF);
+    // Галочка «Больше не показывать»
+    m_check = QRect(kPad, h, fm.horizontalAdvance(TXT("Больше не показывать «Что нового»")) + 26, 24);
+    h += 24 + 8;
+    const int rowH = 30;
     const int btnW = fm.horizontalAdvance(TXT("Понятно")) + 36;
     m_button = QRect(kWidth - kPad - btnW, h, btnW, rowH);
     const int linkW = fm.horizontalAdvance(TXT("Все изменения"));
@@ -107,6 +110,7 @@ void WhatsNewCard::paintEvent(QPaintEvent*)
     p.setFont(bodyF);
     const int textW = kWidth - 2 * kPad - 16;
     int y = kPad + tfm.height() + 12;
+    // Галочка рисуется в конце (знаем, где она) — здесь только пункты
     for (const QString& b : m_bullets)
     {
         const QRect br = QFontMetrics(bodyF).boundingRect(QRect(0, 0, textW, 4000), Qt::TextWordWrap, b);
@@ -116,6 +120,26 @@ void WhatsNewCard::paintEvent(QPaintEvent*)
         p.setPen(Theme::TextColor.color());
         p.drawText(QRect(kPad + 16, y, textW, br.height()), Qt::TextWordWrap, b);
         y += br.height() + kGap;
+    }
+
+    // Галочка «Больше не показывать»
+    {
+        const QRectF box(m_check.left(), m_check.center().y() - 8, 16, 16);
+        const QColor line = m_hover == 4 ? Theme::TextColor.color() : Theme::SubText.color();
+        p.setPen(QPen(line, 1.3));
+        p.setBrush(m_dontShow ? Theme::Accent.color() : Qt::NoBrush);
+        p.drawRoundedRect(box, 4, 4);
+        if (m_dontShow)
+        {
+            p.setPen(QPen(QColor(Qt::white), 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            p.setBrush(Qt::NoBrush);
+            const QPointF pts[3] = {{box.left() + 3.5, box.center().y()}, {box.left() + 6.8, box.bottom() - 4.2}, {box.right() - 3.2, box.top() + 4.4}};
+            p.drawPolyline(pts, 3);
+        }
+        p.setFont(bodyF);
+        p.setPen(Theme::SubText.color());
+        p.drawText(QRect(m_check.left() + 24, m_check.top(), m_check.width() - 24, m_check.height()), Qt::AlignLeft | Qt::AlignVCenter,
+                   TXT("Больше не показывать «Что нового»"));
     }
 
     // «Все изменения» — ссылка слева, «Понятно» — кнопка справа
@@ -142,7 +166,7 @@ void WhatsNewCard::paintEvent(QPaintEvent*)
 void WhatsNewCard::mouseMoveEvent(QMouseEvent* e)
 {
     const QPoint pos = e->position().toPoint();
-    const int h = m_button.contains(pos) ? 1 : m_link.contains(pos) ? 2 : m_close.contains(pos) ? 3 : 0;
+    const int h = m_button.contains(pos) ? 1 : m_link.contains(pos) ? 2 : m_close.contains(pos) ? 3 : m_check.contains(pos) ? 4 : 0;
     if (h != m_hover)
     {
         m_hover = h;
@@ -161,9 +185,15 @@ void WhatsNewCard::mousePressEvent(QMouseEvent* e)
         QDesktopServices::openUrl(QUrl(QStringLiteral("https://github.com/NKF-XXX/StartMenu/releases/tag/v%1").arg(m_version)));
         return;
     }
+    if (m_check.contains(pos))
+    {
+        m_dontShow = !m_dontShow;
+        update();
+        return;
+    }
     if (m_button.contains(pos) || m_close.contains(pos))
     {
         hide();
-        emit dismissed();
+        emit dismissed(m_dontShow);
     }
 }

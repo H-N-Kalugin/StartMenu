@@ -433,5 +433,9 @@
 "431": "Installer mit eigenem Symbol, Update-Prüfung alle 30 Minuten",
 "432": "Verstanden",
 "433": "Alle Änderungen",
-"434": "Neu in Version %1"
+"434": "Neu in Version %1",
+"435": "Updates automatisch installieren (einmal täglich, nicht während eines Spiels)",
+"436": "Wenn eine neue Version erscheint, lädt das Programm sie selbst herunter und installiert sie; das Menü startet für ein paar Sekunden neu. Im Vollbildspiel oder in einer Präsentation geschieht das nicht.",
+"437": "Nach einem Update „Neuigkeiten“ anzeigen",
+"438": "„Neuigkeiten“ nicht mehr anzeigen"
 }

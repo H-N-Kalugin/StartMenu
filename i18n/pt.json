@@ -433,5 +433,9 @@
 "431": "Instalador com o nosso ícone, verificação de atualizações a cada 30 minutos",
 "432": "Entendi",
 "433": "Todas as alterações",
-"434": "Novidades da versão %1"
+"434": "Novidades da versão %1",
+"435": "Instalar atualizações automaticamente (uma vez por dia, não durante um jogo)",
+"436": "Quando sai uma nova versão, o programa a baixa e instala sozinho; o menu reinicia por alguns segundos. Não faz isso durante um jogo em tela cheia ou apresentação.",
+"437": "Mostrar «Novidades» após uma atualização",
+"438": "Não mostrar mais «Novidades»"
 }
