@@ -68,6 +68,7 @@ namespace Theme
 
     inline Rgba PanelBg      {20, 20, 22, 245};   // настройка: цвет + непрозрачность
     inline Rgba PanelBorder  {255, 255, 255, 22};
+    inline bool Light        = false;             // светлая тема: фон светлый, подложки и линии — тёмные
     inline Rgba GroupBg      {255, 255, 255, 14}; // настройка
     inline Rgba TileBg       {255, 255, 255, 16}; // настройка
     inline Rgba TileHover    {255, 255, 255, 30};

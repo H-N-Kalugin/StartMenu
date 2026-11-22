@@ -332,8 +332,12 @@ void Skin::paintPanel(QPainter& p, const QRect& rect, const QImage& backdrop, in
     const QRectF panel = QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5);
     if (effect == 1)
     {
-        // Стекло и подложку рисует Windows. Почти невидимая заливка нужна, иначе клики проваливаются сквозь окно.
+        // Стекло рисует Windows. Почти невидимая заливка нужна, иначе клики проваливаются сквозь окно.
         p.fillRect(rect, QColor(0, 0, 0, 1));
+        // Цвет фона с «Непрозрачностью» — поверх стекла, нашей заливкой
+        QPainterPath glass;
+        glass.addRoundedRect(panel, glassRadius(), glassRadius());
+        p.fillPath(glass, Theme::PanelBg.color());
         if (Theme::PanelBorder.a > 0)
         {
             p.setPen(QPen(Theme::PanelBorder.color(), 1));
@@ -756,7 +760,7 @@ namespace
                 p.drawRoundedRect(br, rad, rad);
                 if (hot)
                 {
-                    p.setBrush(QColor(255, 255, 255, m.pressed == part ? 20 : 34));
+                    p.setBrush(Theme::Light ? QColor(0, 0, 0, m.pressed == part ? 18 : 28) : QColor(255, 255, 255, m.pressed == part ? 20 : 34));
                     p.drawRoundedRect(br, rad, rad);
                 }
             }

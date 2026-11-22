@@ -36,6 +36,7 @@
 #include "StartWindow.h"
 #include "Theme.h"
 #include "Welcome.h"
+#include "Updater.h"
 
 #include <windows.h>
 #include <malloc.h>
@@ -428,11 +429,26 @@ namespace
         QSystemTrayIcon tray(AppIcon::icon());
         tray.setToolTip("StartMenu");
         QMenu trayMenu;
+        // Пауза: Win и кнопка «Пуск» снова открывают меню Windows (до повторного нажатия или перезапуска)
+        bool paused = false;
+        std::function<void()> reapplyHook;
         // Меню трея собирается заново при смене языка
         auto buildTrayMenu = [&] {
             trayMenu.clear();
             trayMenu.addAction(TXT("Открыть меню"), &app, toggle);
             trayMenu.addAction(TXT("Настройки…"), &app, [] { WinShell::startSelf(QStringLiteral("--settings")); });
+            if (const auto upd = Updater::available())
+                trayMenu.addAction(TXT("Обновить до версии %1").arg(upd->version), &app, [info = *upd] { Updater::install(info); });
+
+            auto* pause = trayMenu.addAction(TXT("Приостановить (Win откроет меню Windows)"));
+            pause->setCheckable(true);
+            pause->setChecked(paused);
+            QObject::connect(pause, &QAction::toggled, &app, [&](bool on) {
+                paused = on;
+                tray.setToolTip(on ? TXT("StartMenu — приостановлен") : QStringLiteral("StartMenu"));
+                if (reapplyHook)
+                    reapplyHook();
+            });
 
             auto* autostart = trayMenu.addAction(TXT("Запускать с Windows"));
             autostart->setCheckable(true);
@@ -450,6 +466,8 @@ namespace
                 QDir().mkpath(dir);
                 QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
             });
+            trayMenu.addAction(TXT("Сообщить об ошибке или идея"), &app,
+                               [] { QDesktopServices::openUrl(QUrl(Updater::issuesUrl())); });
             trayMenu.addSeparator();
             trayMenu.addAction(TXT("Выход"), &app, &QApplication::quit);
         };
@@ -464,18 +482,29 @@ namespace
         // Клавиша Win и кнопка «Пуск» шлют один сигнал; если Win в настройках выключена — игнорируем её здесь.
         QObject::connect(&KeyHook::instance(), &KeyHook::winTapped, &app, toggle);
         const bool noHook = args.contains(QStringLiteral("--nohook"));
-        auto applyHook = [&tray, &menu, noHook] {
+        auto applyHook = [&tray, &menu, &paused, noHook] {
             menu.setStandby(Settings::get().standby || Settings::get().reserveMemory);
             reserveHostMemory(Settings::get().reserveMemory);
             const auto& s = Settings::get();
             KeyHook::instance().setStartButtonEnabled(s.startButton);
             KeyHook::instance().setWinKeyEnabled(s.winKey);
-            if (noHook || (!s.winKey && !s.startButton))
+            if (noHook || paused || (!s.winKey && !s.startButton))
                 KeyHook::instance().uninstall();
             else if (!KeyHook::instance().installed() && !KeyHook::instance().install())
                 tray.showMessage("StartMenu", TXT("Не удалось перехватить клавишу Win. Меню открывается кликом по иконке в трее."));
         };
         applyHook();
+        reapplyHook = applyHook;
+
+        // Обновления: проверка не чаще раза в сутки (сама следит по времени последней проверки)
+        QTimer updateTimer;
+        auto checkUpdates = [&buildTrayMenu] {
+            if (Settings::get().checkUpdates)
+                Updater::check(false, [&buildTrayMenu](bool) { buildTrayMenu(); });
+        };
+        QObject::connect(&updateTimer, &QTimer::timeout, &app, checkUpdates);
+        updateTimer.start(3 * 3600 * 1000);
+        QTimer::singleShot(60 * 1000, &app, checkUpdates);
 
         // Сторожок: Windows может молча снять хук, если система подвисла, — проверяем раз в 3 с.
         QTimer watchdog;
@@ -488,7 +517,8 @@ namespace
         bool otherRunning = KeyHook::otherStartMenuRunning();
         int watchdogTicks = 0;
         QObject::connect(&watchdog, &QTimer::timeout, &app, [&tray, &warnedOther, &otherRunning, &watchdogTicks] {
-            KeyHook::instance().checkAlive();
+            if (KeyHook::instance().installed())
+                KeyHook::instance().checkAlive();
             if (++watchdogTicks % 10 == 0) // список процессов — раз в 30 с (≈3,5 мс), а не каждые 3 с
                 otherRunning = KeyHook::otherStartMenuRunning();
             if (otherRunning)
@@ -589,6 +619,14 @@ int main(int argc, char* argv[])
             s.preset = 1;
             s.save();
             return 0;
+        }
+        if (qstrcmp(argv[i], "--check-updates") == 0)
+        {
+            // Служебное: сразу спросить GitHub о новой версии (код выхода 0 — ответ получен)
+            QCoreApplication app(argc, argv);
+            app.setApplicationName("StartMenu");
+            Updater::check(true, [](bool ok) { QCoreApplication::exit(ok ? 0 : 1); });
+            return app.exec();
         }
         if (qstrcmp(argv[i], "--settings-shots") == 0 && i + 1 < argc)
         {
@@ -696,6 +734,15 @@ int main(int argc, char* argv[])
                     s.showLabels = false;
                 else if (app.arguments().contains(QStringLiteral("--labels")))
                     s.showLabels = true;
+                // --light / --dark — тема (только в памяти)
+                if (app.arguments().contains(QStringLiteral("--light")))
+                    s.theme = 1;
+                else if (app.arguments().contains(QStringLiteral("--dark")))
+                    s.theme = 0;
+                // --opacity N — непрозрачность фона, % (только в памяти, для проверки)
+                const int oi = int(app.arguments().indexOf(QStringLiteral("--opacity")));
+                if (oi >= 0 && oi + 1 < app.arguments().size())
+                    s.opacity = std::clamp(app.arguments()[oi + 1].toInt(), 0, 100);
                 const int zi = int(app.arguments().indexOf(QStringLiteral("--size")));
                 if (zi >= 0 && zi + 1 < app.arguments().size())
                 {

@@ -40,12 +40,14 @@ add_executable(StartMenu WIN32
     src/SoundPopup.h    src/SoundPopup.cpp
     src/SystemStats.h   src/SystemStats.cpp    # ЦП / ОЗУ / ГП / диск
     src/Demo.h          src/Demo.cpp           # --render --demo: выдуманные данные для снимков
+    src/Backups.h       src/Backups.cpp        # резервные копии меню
+    src/Updater.h       src/Updater.cpp        # проверка обновлений на GitHub
 )
 
 target_link_libraries(StartMenu PRIVATE Qt6::Widgets)
 if(WIN32)
     target_link_libraries(StartMenu PRIVATE user32 shell32 ole32 oleaut32 uuid advapi32 psapi PowrProf dwmapi shlwapi windowsapp pdh urlmon)
-    target_compile_definitions(StartMenu PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_definitions(StartMenu PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX APP_VERSION="${PROJECT_VERSION}")
 endif()
 if(MSVC)
     # Исходники в UTF-8 без BOM: без /utf-8 кириллица в строках превратится в кракозябры.

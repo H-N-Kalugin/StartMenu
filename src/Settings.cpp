@@ -120,6 +120,9 @@ void Settings::load()
     clipboardHistory = o["clipboardHistory"].toBool(clipboardHistory);
     linkBrowser = o["linkBrowser"].toString();
     systemMonitor = o["systemMonitor"].toBool(systemMonitor);
+    theme = std::clamp(o["theme"].toInt(theme), 0, 2);
+    showHints = o["showHints"].toBool(showHints);
+    checkUpdates = o["checkUpdates"].toBool(checkUpdates);
     apply();
 }
 
@@ -150,6 +153,9 @@ void Settings::save() const
     o["clipboardHistory"] = clipboardHistory;
     o["linkBrowser"] = linkBrowser;
     o["systemMonitor"] = systemMonitor;
+    o["showHints"] = showHints;
+    o["theme"] = theme;
+    o["checkUpdates"] = checkUpdates;
     const FileLock lock;
     keepBackup(filePath());
     QSaveFile f(filePath());
@@ -182,19 +188,52 @@ void Settings::apply() const
     Theme::Adaptive = adaptive;
     Theme::TileFontPx = std::clamp(fontPx, 9, 20);
 
-    Theme::PanelBg = Theme::Rgba::from(background, pct(opacity));
-    Theme::GroupBg = Theme::Rgba::from(groupColor, pct(groupOpacity));
-    Theme::TileBg = Theme::Rgba::from(groupColor, pct(tileOpacity));
-    Theme::TextColor = Theme::Rgba::from(textColor, 255);
-    Theme::Accent = Theme::Rgba::from(systemAccent ? windowsAccent() : accent, 255);
-    Theme::PanelBorder = {255, 255, 255, border ? 22 : 0};
+    // Светлая тема: тёмные цвета стиля заменяются светлыми того же оттенка (свои светлые цвета не трогаем)
+    Theme::Light = wantsLight();
+    auto luma = [](const QColor& c) { return 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF(); };
+    QColor bg = background, txt = textColor, grp = groupColor, acc = systemAccent ? windowsAccent() : accent;
+    if (Theme::Light)
+    {
+        if (luma(bg) < 0.5)
+            bg = QColor::fromHslF(qMax(0.0f, bg.hslHueF()), qMin(0.22f, bg.hslSaturationF() * 1.5f), 0.955f);
+        if (luma(txt) > 0.5)
+            txt = QColor(0x1B, 0x1D, 0x23);
+        if (luma(grp) > 0.5)
+            grp = QColor(0, 0, 0);
+        if (luma(acc) > 0.55) // слишком светлый акцент не читается на белом
+            acc = acc.darker(135);
+    }
+
+    // Светлый фон делаем плотнее: полупрозрачный белый поверх тёмных обоев выглядит грязно-серым
+    Theme::PanelBg = Theme::Rgba::from(bg, pct(Theme::Light ? opacity + (100 - opacity) * 6 / 10 : opacity));
+    Theme::GroupBg = Theme::Rgba::from(grp, pct(groupOpacity));
+    Theme::TileBg = Theme::Rgba::from(grp, pct(tileOpacity));
+    Theme::TextColor = Theme::Rgba::from(txt, 255);
+    Theme::Accent = Theme::Rgba::from(acc, 255);
+    Theme::PanelBorder = Theme::Light ? Theme::Rgba{0, 0, 0, border ? 30 : 0} : Theme::Rgba{255, 255, 255, border ? 22 : 0};
 
     // Подсветка наведения/нажатия — от цвета текста, чтобы работало и на светлом фоне.
-    Theme::TileHover = Theme::Rgba::from(textColor, 30);
-    Theme::TilePressed = Theme::Rgba::from(textColor, 48);
-    Theme::ChipBg = Theme::Rgba::from(textColor, 40);
-    Theme::ScrollHandle = Theme::Rgba::from(textColor, 50);
-    Theme::SubText = Theme::Rgba::from(textColor.darker(150), 255);
+    Theme::TileHover = Theme::Rgba::from(txt, Theme::Light ? 22 : 30);
+    Theme::TilePressed = Theme::Rgba::from(txt, Theme::Light ? 36 : 48);
+    Theme::ChipBg = Theme::Rgba::from(txt, Theme::Light ? 26 : 40);
+    Theme::ScrollHandle = Theme::Rgba::from(txt, 50);
+    Theme::SubText = Theme::Light ? Theme::Rgba{0x5F, 0x64, 0x70, 255} : Theme::Rgba::from(txt.darker(150), 255);
+}
+
+bool Settings::windowsLight()
+{
+#ifdef _WIN32
+    DWORD v = 0, size = sizeof(v);
+    if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                     L"AppsUseLightTheme", RRF_RT_REG_DWORD, nullptr, &v, &size) == ERROR_SUCCESS)
+        return v != 0;
+#endif
+    return false;
+}
+
+bool Settings::wantsLight() const
+{
+    return theme == 1 || (theme == 2 && windowsLight());
 }
 
 QColor Settings::windowsAccent()

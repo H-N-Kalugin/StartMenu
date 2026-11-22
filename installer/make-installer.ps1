@@ -1,9 +1,11 @@
 ﻿# Сборка установщика: dist\StartMenu-<версия>.exe
 # Запуск (после build.cmd):  pwsh -File installer\make-installer.ps1
 # Установщик собирается встроенным в Windows IExpress — ничего ставить не нужно.
-param([string]$Version = '1.0.0')
+param([string]$Version)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+# Версия — из CMakeLists.txt (project(StartMenu VERSION x.y.z)), если не передана явно
+if (-not $Version) { $Version = [regex]::Match((Get-Content (Join-Path $root 'CMakeLists.txt') -Raw), 'project\(StartMenu VERSION ([\d.]+)').Groups[1].Value }
 $build = Join-Path $root 'build'
 $dist = Join-Path $root 'dist'
 $stage = Join-Path $dist 'stage'     # что окажется в папке программы
@@ -38,7 +40,10 @@ New-Item -ItemType Directory -Force (Join-Path $stage 'imageformats') | Out-Null
 Copy-Item (Join-Path $build 'imageformats\*.dll') (Join-Path $stage 'imageformats')
 
 # 2. Библиотеки C++ (Visual C++ 2015–2022) — рядом с программой, чтобы не требовать установки vc_redist
-$redistRoot = 'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Redist\MSVC'
+# Где стоит Visual Studio (Community на этом ПК, Enterprise на сборочном сервере GitHub) — спрашиваем vswhere
+$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+$vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+$redistRoot = Join-Path $vsPath 'VC\Redist\MSVC'
 $crt = Get-ChildItem $redistRoot -Directory | Where-Object Name -match '^\d' | Sort-Object { [version]$_.Name } -Descending |
        ForEach-Object { Join-Path $_.FullName 'x64\Microsoft.VC143.CRT' } | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $crt) { throw 'Не найдены библиотеки Visual C++ (Microsoft.VC143.CRT)' }

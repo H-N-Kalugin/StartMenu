@@ -286,7 +286,7 @@ QImage WelcomeWindow::renderPreview(int kind, bool fill, qreal dpr)
     sk.paintMediaPlayer(p, m);
     const int infoLeft = m.r.right() + 24;
     sk.paintToolbarInfo(p, QRect(infoLeft, search.y(), logical.width() - Theme::ContentMargin - 10 - infoLeft, search.height()),
-                        {TXT("02 ГРУППЫ"), TXT("11 ПЛИТОК")});
+                        {}); // счётчики по умолчанию выключены
 
     // Группы с плитками-заглушками
     const int cell = Theme::Cell, gap = Theme::CellGap, pad = Theme::GroupPad;
@@ -374,7 +374,7 @@ QImage WelcomeWindow::renderPreview(int kind, bool fill, qreal dpr)
         sk.paintStatusBar(p, QRect(Theme::SidebarWidth, logical.height() - status, logical.width() - Theme::SidebarWidth, status),
                           TXT("Браузер"), TXT("РАБОТА / 01 · 4×2"),
                           QStringLiteral("C:\\Program Files\\Browser\\browser.exe"),
-                          {TXT("↵|ЗАПУСК"), TXT("ESC|ЗАКРЫТЬ")});
+                          {}); // подсказки клавиш по умолчанию выключены
     p.end();
     Settings::get().apply(); // вернуть тему процесса как была
     return img;
@@ -591,7 +591,7 @@ QWidget* WelcomeWindow::buildDonePage()
         TXT("＋  Перетащите приложение из «Все приложения» (значок списка слева) или файл из Проводника — появится плитка."),
         TXT("☰  <b>ПКМ</b> по пустому месту — новая группа, подписи, настройки. ПКМ по плитке — размер, цвет, своя картинка."),
         TXT("♪  Когда играет музыка или видео, в меню появляется плеер. Клик по треку — большой плеер над меню с перемоткой, ПКМ — его вид."),
-        TXT("⧉  Слева — буфер обмена (что вы копировали; точка — есть новое) и звук: громкость и наушники/колонки."),
+        TXT("⧉  Слева — звук: громкость и наушники/колонки. Историю буфера обмена можно включить галочкой ниже."),
         TXT("⊕  «+ Слой» рядом с поиском — ещё одна страница плиток. ПКМ по группе → «Добавить» — папка или ссылка на сайт."),
         TXT("⤢  Размер меню меняется мышкой за край окна — плитки подстроятся сами."),
     };
@@ -602,7 +602,12 @@ QWidget* WelcomeWindow::buildDonePage()
         l->setWordWrap(true);
         v->addWidget(l);
     }
-    v->addSpacing(10);
+    v->addSpacing(8);
+    // История буфера обмена — только с явного согласия
+    m_clipboard = new QCheckBox(TXT("Запоминать, что я копирую (история буфера обмена в меню)"));
+    m_clipboard->setToolTip(TXT("Хранится только на этом компьютере. Пароли из менеджеров паролей не сохраняются. Можно выключить в настройках."));
+    v->addWidget(m_clipboard);
+    v->addSpacing(6);
     // Крупно — выбранный стиль, каким меню откроется
     m_final = new QLabel;
     m_final->setAlignment(Qt::AlignCenter);
@@ -735,6 +740,7 @@ void WelcomeWindow::finish(bool openMenu)
         s.preset = 1;
     }
     s.tileFill = m_fill->isChecked() ? 1 : 0;
+    s.clipboardHistory = m_clipboard && m_clipboard->isChecked();
     s.save();
     s.apply();
 

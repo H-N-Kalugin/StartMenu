@@ -12,6 +12,7 @@ struct Settings
     enum class Animation { None, Fade, Slide };
 
     int skin = 0;                    // стиль оформления (Skin::Kind)
+    int theme = 2;                   // тема: 0 — тёмная, 1 — светлая, 2 — как в Windows
     QString language = QStringLiteral("auto"); // язык интерфейса: «auto» — как в Windows, или код («en», «de»…)
     int preset = 1;                  // какой пресет выбран (0 — «Свои настройки»)
 
@@ -58,8 +59,10 @@ struct Settings
     bool mediaWave = true;           // волна на ползунке, пока играет
     bool mediaGlow = true;           // подсветка снизу панели в ритм музыки
     QString linkBrowser;             // чем открывать ссылки на сайты: пусто — браузер по умолчанию, иначе путь к exe
-    bool clipboardHistory = true;    // история буфера обмена (кнопка слева, точка — есть новое)
-    bool systemMonitor = true;       // ЦП / ОЗУ / ГП / диск в нижней строке меню
+    bool clipboardHistory = false;   // история буфера обмена (кнопка слева, точка — есть новое); включается в мастере
+    bool systemMonitor = false;      // ЦП / ОЗУ / ГП / диск в нижней строке меню
+    bool showHints = false;          // подсказки клавиш и счётчики групп/плиток
+    bool checkUpdates = true;        // раз в день спрашивать GitHub о новой версии
     int mediaColor = 0;              // цвет плеера (подсветка, полоса, кнопка): 0 — акцент стиля, 1 — из обложки
 
     // Вид каждого стиля отдельно: {"0": {...}, "1": {...}} — смена стиля не затирает настройки другого.
@@ -74,4 +77,6 @@ struct Settings
     QJsonObject lookJson() const;              // переносит значения в Theme
     static QString filePath();
     static QColor windowsAccent();
+    static bool windowsLight();      // в Windows включена светлая тема приложений
+    bool wantsLight() const;         // какая тема должна быть сейчас
 };

@@ -46,7 +46,8 @@ void PlayerWindow::prepareBackdrop(const QRect& geo)
 void PlayerWindow::applyEffect()
 {
     const auto effect = Settings::get().effect;
-    WinShell::setAcrylic(this, effect == Settings::Effect::Acrylic, Theme::PanelBg.color());
+    // Оттенок стекла рисуем сами (paintPanel) — Windows почти не учитывает его прозрачность
+    WinShell::setAcrylic(this, effect == Settings::Effect::Acrylic, Theme::Rgba::from(Theme::PanelBg.color(), 1).color());
     if (effect == Settings::Effect::Acrylic)
         WinShell::setCornerRadius(this, Theme::Radius);
     else

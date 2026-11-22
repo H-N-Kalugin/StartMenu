@@ -32,6 +32,7 @@ private:
     QWidget* buildLookTab();
     QWidget* buildTilesTab();
     QWidget* buildBehaviorTab();
+    QWidget* buildDataTab();   // резервные копии, обновления, обратная связь
     QPushButton* colorButton(QColor Settings::* field);
     QSlider* slider(int Settings::* field, int min, int max, const QString& suffix, QWidget** valueLabel = nullptr);
     QSpinBox* spin(int Settings::* field, int min, int max, const QString& suffix);

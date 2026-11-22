@@ -11,6 +11,7 @@
 [![Лицензия](https://img.shields.io/github/license/NKF-XXX/StartMenu?color=22C55E&label=лицензия)](LICENSE)
 [![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?logo=windows11&logoColor=white)](#-установка-за-1-минуту)
 [![Qt 6.8](https://img.shields.io/badge/Qt-6.8-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
+[![Сделано с Claude Code](https://img.shields.io/badge/Сделано_с-Claude_Code-D97757?logo=claude&logoColor=white)](#-сделано-с-помощью-ии)
 
 <img src="docs/images/ru/hero.png" alt="StartMenu в Windows 11" width="100%">
 
@@ -113,6 +114,11 @@
 ## 🌍 12 языков
 
 English · Русский · Українська · Deutsch · Français · Español · Italiano · Português · Polski · Türkçe · 中文 · 日本語
+
+## 🤖 Сделано с помощью ИИ
+
+StartMenu — это **вайб-кодинг**: весь код написал ИИ-ассистент [Claude Code](https://claude.com/claude-code) от Anthropic, а человек, который не является профессиональным программистом, ставил задачи и проверял результат.
+Каждая функция проверена вручную на настоящем ПК, а код открыт — любой может его изучить. Но, пожалуйста, учитывайте это и [пишите нам](https://github.com/NKF-XXX/StartMenu/issues/new/choose), если что-то работает странно.
 
 ## 🛠 Сборка из исходников
 

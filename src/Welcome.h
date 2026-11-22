@@ -47,6 +47,7 @@ private:
     QListWidget* m_apps = nullptr;
     QLineEdit* m_filter = nullptr;
     QCheckBox* m_start11 = nullptr;
+    QCheckBox* m_clipboard = nullptr;     // включить историю буфера обмена (по умолчанию нет)
     QCheckBox* m_windowsPins = nullptr;   // перенести закреплённое в «Пуске» Windows
     QLabel* m_count = nullptr;
     QLabel* m_final = nullptr;       // превью выбранного стиля на последней странице

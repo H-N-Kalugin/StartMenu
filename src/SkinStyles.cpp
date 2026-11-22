@@ -21,7 +21,8 @@ namespace
         return r;
     }
     QColor text(qreal a = 1.0) { return withAlpha(Theme::TextColor.color(), a); }
-    QColor white(qreal a) { return QColor(255, 255, 255, int(255 * a)); }
+    // «Белая» подложка/линия стиля; в светлой теме — такая же, но тёмная
+    QColor white(qreal a) { return Theme::Light ? QColor(0, 0, 0, int(255 * a * 0.6)) : QColor(255, 255, 255, int(255 * a)); }
     // Фоны из настроек «Цвет групп и плиток», «Фон групп», «Фон плиток».
     QColor groupBg() { return Theme::GroupBg.color(); }
     QColor tileBg() { return Theme::TileBg.color(); }
@@ -188,7 +189,7 @@ namespace
                 p.drawRoundedRect(QRectF(r).adjusted(-1.5, -1.5, 1.5, 1.5), 5, 5);
             }
             p.setPen(QPen(active ? withAlpha(acc, 0.75) : white(0.13), 1));
-            p.setBrush(QColor(0, 0, 0, 77));
+            p.setBrush(Theme::Light ? QColor(255, 255, 255, 190) : QColor(0, 0, 0, 77));
             p.drawRoundedRect(QRectF(r).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
             drawSearchGlyph(p, QRectF(r.x() + 10, r.center().y() - 8, 16, 16), active ? acc : t3());
 
@@ -257,7 +258,7 @@ namespace
             st.radius = 4;
             st.artRadius = 2;
             st.roundButtons = false;
-            st.bg = QColor(0, 0, 0, 77);
+            st.bg = Theme::Light ? QColor(255, 255, 255, 190) : QColor(0, 0, 0, 77);
             st.border = white(0.13);
             st.hoverBg = white(0.07);
             st.playBg = QColor(0, 0, 0, 0);
@@ -877,7 +878,7 @@ namespace
                 g.setColorAt(0, withAlpha(tint, qMin(1.0, 0.30 * k + 0.10 * t.hover)));
                 g.setColorAt(1, withAlpha(tint, qMin(1.0, 0.10 * k + 0.06 * t.hover)));
                 p.setPen(Qt::NoPen);
-                p.setBrush(QColor(255, 255, 255, 14));
+                p.setBrush(white(0.055));
                 p.drawRoundedRect(rf, Theme::TileRadius, Theme::TileRadius);
                 p.setBrush(g);
             }

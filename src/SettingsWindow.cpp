@@ -5,8 +5,12 @@
 #include "PinSync.h"
 #include "Shell.h"
 #include "Theme.h"
+#include "Backups.h"
+#include "Updater.h"
 
 #include <QCheckBox>
+#include <QDesktopServices>
+#include <QUrl>
 #include <QCloseEvent>
 #include <QColorDialog>
 #include <QComboBox>
@@ -22,9 +26,11 @@
 #include <QProcess>
 #include <QSignalBlocker>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 #include <QScreen>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QSlider>
 #include <QSpinBox>
 #include <QTabWidget>
@@ -141,6 +147,7 @@ SettingsWindow::SettingsWindow()
     tabs->addTab(buildLookTab(), TXT("Фон и цвета"));
     tabs->addTab(buildTilesTab(), TXT("Плитки и окно"));
     tabs->addTab(buildBehaviorTab(), TXT("Поведение"));
+    tabs->addTab(buildDataTab(), TXT("Копии и обновления"));
     root->addWidget(tabs, 1);
 
     auto* buttons = new QHBoxLayout;
@@ -292,6 +299,16 @@ QWidget* SettingsWindow::buildLookTab()
     f->setHorizontalSpacing(20);
 
     f->addRow(section(TXT("Фон меню")));
+    auto* theme = new QComboBox;
+    theme->addItems({TXT("Тёмная"), TXT("Светлая"), TXT("Как в Windows")});
+    m_refreshers.append([theme] { theme->setCurrentIndex(Settings::get().theme); });
+    connect(theme, &QComboBox::currentIndexChanged, this, [this](int i) {
+        if (m_loading)
+            return;
+        Settings::get().theme = i;
+        changed();
+    });
+    f->addRow(TXT("Тема"), theme);
     f->addRow(TXT("Цвет фона"), colorButton(&Settings::background));
     QWidget* lbl = nullptr;
     QSlider* s = slider(&Settings::opacity, 0, 100, QStringLiteral(" %"), &lbl);
@@ -517,6 +534,7 @@ QWidget* SettingsWindow::buildBehaviorTab()
     clip->setToolTip(TXT("Пароли из менеджеров паролей не сохраняются. История — в %LOCALAPPDATA%\\StartMenu\\clipboard."));
     v->addWidget(clip);
     v->addWidget(check(TXT("Монитор системы внизу меню (ЦП, память, видеокарта, диск)"), &Settings::systemMonitor));
+    v->addWidget(check(TXT("Подсказки клавиш и счётчики групп и плиток"), &Settings::showHints));
 
     // Чем открывать ссылки на сайты, закреплённые плитками
     auto* browserRow = new QHBoxLayout;
@@ -584,6 +602,139 @@ QWidget* SettingsWindow::buildBehaviorTab()
     return page;
 }
 
+QWidget* SettingsWindow::buildDataTab()
+{
+    auto* page = new QWidget;
+    auto* v = new QVBoxLayout(page);
+    auto grey = [](const QString& text) {
+        auto* l = new QLabel(text);
+        l->setWordWrap(true);
+        l->setStyleSheet(QStringLiteral("color: #9AA0AE;"));
+        return l;
+    };
+
+    // ---- Резервные копии ----
+    v->addWidget(section(TXT("Резервные копии меню")));
+    v->addWidget(grey(TXT("Раз в день группы и плитки сохраняются сами. Хранятся последние 7 копий.")));
+    auto* restoreRow = new QHBoxLayout;
+    auto* copies = new QComboBox;
+    auto fillCopies = [copies] {
+        copies->clear();
+        const QLocale loc = Lang::locale();
+        for (const Backups::Entry& e : Backups::list())
+            copies->addItem(loc.toString(e.time, QLocale::ShortFormat), e.file);
+        if (!copies->count())
+            copies->addItem(TXT("Копий пока нет — появятся завтра"), QString());
+    };
+    fillCopies();
+    auto* restoreBtn = new QPushButton(TXT("Восстановить"));
+    restoreRow->addWidget(copies, 1);
+    restoreRow->addWidget(restoreBtn);
+    v->addLayout(restoreRow);
+
+    auto restoreFrom = [this, fillCopies](const QString& file) {
+        if (file.isEmpty())
+            return;
+        if (!Backups::isValidMenuFile(file))
+        {
+            QMessageBox::warning(this, TXT("Резервные копии меню"), TXT("Это не файл меню StartMenu."));
+            return;
+        }
+        if (QMessageBox::question(this, TXT("Резервные копии меню"),
+                                  TXT("Заменить текущие группы и плитки? Текущее меню тоже сохранится в копиях."))
+            != QMessageBox::Yes)
+            return;
+        if (Backups::restore(file))
+            QMessageBox::information(this, TXT("Резервные копии меню"), TXT("Меню восстановлено."));
+        else
+            QMessageBox::warning(this, TXT("Резервные копии меню"), TXT("Не удалось восстановить меню."));
+        fillCopies();
+    };
+    connect(restoreBtn, &QPushButton::clicked, this, [copies, restoreFrom] { restoreFrom(copies->currentData().toString()); });
+
+    auto* fileRow = new QHBoxLayout;
+    auto* exportBtn = new QPushButton(TXT("Сохранить меню в файл…"));
+    auto* importBtn = new QPushButton(TXT("Загрузить из файла…"));
+    connect(exportBtn, &QPushButton::clicked, this, [this] {
+        const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        const QString file = QFileDialog::getSaveFileName(this, TXT("Сохранить меню в файл…"), docs + QStringLiteral("/StartMenu-menu.json"),
+                                                          QStringLiteral("JSON (*.json)"));
+        if (!file.isEmpty() && !Backups::exportTo(file))
+            QMessageBox::warning(this, TXT("Резервные копии меню"), TXT("Не удалось сохранить файл."));
+    });
+    connect(importBtn, &QPushButton::clicked, this, [this, restoreFrom] {
+        const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        restoreFrom(QFileDialog::getOpenFileName(this, TXT("Загрузить из файла…"), docs, QStringLiteral("JSON (*.json)")));
+    });
+    fileRow->addWidget(exportBtn);
+    fileRow->addWidget(importBtn);
+    fileRow->addStretch();
+    v->addLayout(fileRow);
+    v->addWidget(grey(TXT("Файлом меню можно поделиться или перенести его на другой компьютер.")));
+    v->addSpacing(14);
+
+    // ---- Обновления ----
+    v->addWidget(section(TXT("Обновления")));
+    auto* updCheck = check(TXT("Проверять обновления раз в день"), &Settings::checkUpdates);
+    updCheck->setToolTip(TXT("Меню спрашивает у GitHub номер последней версии. Никакие данные о вас не отправляются."));
+    v->addWidget(updCheck);
+    auto* updRow = new QHBoxLayout;
+    auto* updState = new QLabel;
+    auto* checkNow = new QPushButton(TXT("Проверить сейчас"));
+    auto* installBtn = new QPushButton;
+    installBtn->setObjectName(QStringLiteral("primary"));
+    updRow->addWidget(updState, 1);
+    updRow->addWidget(checkNow);
+    updRow->addWidget(installBtn);
+    v->addLayout(updRow);
+    auto showState = [updState, installBtn] {
+        const auto info = Updater::available();
+        updState->setText(info ? TXT("Доступна версия %1 (у вас %2)").arg(info->version, Updater::currentVersion())
+                               : TXT("Версия %1 — последняя").arg(Updater::currentVersion()));
+        installBtn->setVisible(info.has_value());
+        if (info)
+            installBtn->setText(TXT("Обновить до %1").arg(info->version));
+    };
+    showState();
+    connect(checkNow, &QPushButton::clicked, this, [this, checkNow, updState, showState] {
+        checkNow->setEnabled(false);
+        updState->setText(TXT("Проверяю…"));
+        QPointer<QPushButton> guard(checkNow);
+        Updater::check(true, [guard, updState, showState](bool ok) {
+            if (!guard)
+                return;
+            guard->setEnabled(true);
+            showState();
+            if (!ok)
+                updState->setText(TXT("Не удалось связаться с GitHub. Проверьте интернет."));
+        });
+    });
+    connect(installBtn, &QPushButton::clicked, this, [installBtn, updState] {
+        if (const auto info = Updater::available())
+        {
+            installBtn->setEnabled(false);
+            updState->setText(TXT("Скачиваю установщик…"));
+            QPointer<QPushButton> guard(installBtn);
+            Updater::install(*info, [guard, updState](bool ok) {
+                if (!guard)
+                    return;
+                guard->setEnabled(true);
+                updState->setText(ok ? TXT("Установщик запущен.") : TXT("Открыл страницу загрузки в браузере."));
+            });
+        }
+    });
+    v->addSpacing(14);
+
+    // ---- Обратная связь ----
+    v->addWidget(section(TXT("Обратная связь")));
+    v->addWidget(grey(TXT("Нашли ошибку или есть идея? Напишите — так меню станет лучше.")));
+    auto* report = new QPushButton(TXT("Сообщить об ошибке или идея"));
+    connect(report, &QPushButton::clicked, this, [] { QDesktopServices::openUrl(QUrl(Updater::issuesUrl())); });
+    v->addWidget(report, 0, Qt::AlignLeft);
+    v->addStretch();
+    return page;
+}
+
 // ---------- логика ----------
 
 void SettingsWindow::reloadFromDisk()
@@ -634,6 +785,8 @@ void SettingsWindow::applyPreset(int index)
     const bool mediaWave = s.mediaWave, mediaGlow = s.mediaGlow;
     const int mediaColor = s.mediaColor;
     const bool clipboardHistory = s.clipboardHistory, systemMonitor = s.systemMonitor;
+    const bool showHints = s.showHints, checkUpdates = s.checkUpdates;
+    const int theme = s.theme;
     const QString linkBrowser = s.linkBrowser;
     const Settings::Position position = s.position;
     const int bottomGap = s.bottomGap;
@@ -652,6 +805,9 @@ void SettingsWindow::applyPreset(int index)
     s.clipboardHistory = clipboardHistory;
     s.linkBrowser = linkBrowser;
     s.systemMonitor = systemMonitor;
+    s.showHints = showHints;
+    s.theme = theme;
+    s.checkUpdates = checkUpdates;
     s.position = position;
     s.bottomGap = bottomGap;
     s.skin = skin;
@@ -668,13 +824,8 @@ void SettingsWindow::applyPreset(int index)
         s.blurRadius = 80;
         s.opacity = 60;
         break;
-    case 4: // светлый
-        s.background = QColor(243, 244, 247);
-        s.opacity = 96;
-        s.textColor = QColor(28, 30, 36);
-        s.groupColor = QColor(0, 0, 0);
-        s.groupOpacity = 5;
-        s.tileOpacity = 5;
+    case 4: // светлый — светлая тема с цветами стиля
+        s.theme = 1;
         break;
     case 5: // компактный
         s.cell = 38;

@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "Backups.h"
 #include "Lang.h"
 #include "Theme.h"
 
@@ -361,6 +362,8 @@ void Config::save() const
     // QSaveFile пишет во временный файл и подменяет — при сбое старый items.json не испортится.
     const FileLock lock;
     keepBackup(filePath());
+    if (m_fileOverride.isEmpty())
+        Backups::daily(filePath()); // раз в день — копия в backups (последние 7)
     QSaveFile f(filePath());
     if (f.open(QIODevice::WriteOnly))
     {

@@ -15,6 +15,7 @@
 #include "Shell.h"
 #include "Sidebar.h"
 #include "Theme.h"
+#include "Updater.h"
 #include "Workspace.h"
 
 #include <QApplication>
@@ -263,7 +264,8 @@ void StartWindow::applyEffect()
 {
     const auto effect = Settings::get().effect;
     // Системное стекло рисует Windows; углы тогда скругляет тоже Windows (Win11), а мы не рисуем подложку.
-    WinShell::setAcrylic(this, effect == Settings::Effect::Acrylic, Theme::PanelBg.color());
+    // Оттенок стекла рисуем сами (paintPanel) — Windows почти не учитывает его прозрачность
+    WinShell::setAcrylic(this, effect == Settings::Effect::Acrylic, Theme::Rgba::from(Theme::PanelBg.color(), 1).color());
     // Стекло рисует Windows — углы тоже её: 0 / малые / обычные по настройке «Скругление углов».
     if (effect == Settings::Effect::Acrylic)
         WinShell::setCornerRadius(this, Theme::Radius);
@@ -586,6 +588,7 @@ void StartWindow::showEvent(QShowEvent* e)
     m_media->setWindowShown(true);
     layoutChildren();
     m_sidebar->setClipboardDot(Settings::get().clipboardHistory && ClipboardStore::hasUnseen());
+    m_sidebar->setUpdateDot(Settings::get().checkUpdates && Updater::available().has_value());
     startStats();
 }
 
@@ -619,6 +622,9 @@ QImage StartWindow::renderWithPlayer()
 
 void StartWindow::popup()
 {
+    // Тема «как в Windows»: если в Windows переключили светлую/тёмную — перекрашиваемся
+    if (Settings::get().theme == 2 && Settings::windowsLight() != Theme::Light)
+        reloadSettings();
     m_media->refresh();
     const QRect geo = targetGeometry();
     setFixedSize(geo.size());
@@ -884,8 +890,12 @@ void StartWindow::paintEvent(QPaintEvent*)
     skin.paintSearchField(p, m_searchRect, m_query, m_caretOn, m_searchFocused);
     // Служебная строка справа от поиска и строка состояния внизу (есть не у всех стилей).
     QStringList info;
+    const bool hintsOn = Settings::get().showHints;
     if (m_view == View::Tiles)
-        info = m_workspace->statsLine();
+    {
+        if (hintsOn)
+            info = m_workspace->statsLine();
+    }
     else if (m_view == View::Search)
         info = {TXT("НАЙДЕНО: %1").arg(m_list->count())};
     else if (m_view == View::Clipboard)
@@ -898,8 +908,8 @@ void StartWindow::paintEvent(QPaintEvent*)
                           info);
     if (const int sh = skin.statusBarHeight())
     {
-        const QStringList hints =
-            m_view == View::Tiles     ? QStringList{TXT("↵|ЗАПУСК"), TXT("←→↑↓|НАВИГАЦИЯ"), TXT("ESC|ЗАКРЫТЬ")}
+        const QStringList hints = !hintsOn ? QStringList{}
+            : m_view == View::Tiles     ? QStringList{TXT("↵|ЗАПУСК"), TXT("←→↑↓|НАВИГАЦИЯ"), TXT("ESC|ЗАКРЫТЬ")}
             : m_view == View::Clipboard ? QStringList{TXT("↵|ВСТАВИТЬ"), TXT("↑↓|ВЫБОР"), TXT("ESC|НАЗАД")}
                                         : QStringList{TXT("↵|ЗАПУСК"), TXT("↑↓|ВЫБОР"), TXT("ESC|ОЧИСТИТЬ")};
         skin.paintStatusBar(p, QRect(Theme::SidebarWidth, height() - sh, width() - Theme::SidebarWidth, sh),

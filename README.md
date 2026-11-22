@@ -11,6 +11,7 @@
 [![License](https://img.shields.io/github/license/NKF-XXX/StartMenu?color=22C55E)](LICENSE)
 [![Windows 11](https://img.shields.io/badge/Windows-11-0078D4?logo=windows11&logoColor=white)](#-install-in-one-minute)
 [![Qt 6.8](https://img.shields.io/badge/Qt-6.8-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
+[![Made with Claude Code](https://img.shields.io/badge/Made_with-Claude_Code-D97757?logo=claude&logoColor=white)](#-made-with-ai)
 
 <img src="docs/images/hero.png" alt="StartMenu on Windows 11" width="100%">
 
@@ -113,6 +114,11 @@ Tray icon → *Open settings folder* → copy `items.json` (tiles) and `settings
 ## 🌍 12 languages
 
 English · Русский · Українська · Deutsch · Français · Español · Italiano · Português · Polski · Türkçe · 中文 · 日本語
+
+## 🤖 Made with AI
+
+StartMenu is **vibe-coded**: all of its code was written by the AI assistant [Claude Code](https://claude.com/claude-code) by Anthropic, directed and tested by a person who isn’t a professional programmer.
+Every feature is checked by hand on a real PC, and the code is open for anyone to review — but please keep this in mind, and [tell us](https://github.com/NKF-XXX/StartMenu/issues/new/choose) if something looks off.
 
 ## 🛠 Build from source
 

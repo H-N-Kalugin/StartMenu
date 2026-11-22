@@ -7,6 +7,7 @@
 #include "Skin.h"
 #include "Shell.h"
 #include "Theme.h"
+#include "Updater.h"
 
 #include <QContextMenuEvent>
 #include <QDir>
@@ -31,6 +32,14 @@ Sidebar::Sidebar(QWidget* parent)
 void Sidebar::setMode(Mode m)
 {
     m_mode = m;
+    update();
+}
+
+void Sidebar::setUpdateDot(bool on)
+{
+    if (m_updateDot == on)
+        return;
+    m_updateDot = on;
     update();
 }
 
@@ -140,7 +149,15 @@ void Sidebar::paintEvent(QPaintEvent*)
         case Kind::Sound:
             Glyphs::draw(p, m_muted ? Glyphs::Kind::VolumeMute : Glyphs::Kind::Volume, g, fg, bg);
             break;
-        case Kind::Settings: Glyphs::draw(p, Glyphs::Kind::Settings, g, fg, bg); break;
+        case Kind::Settings:
+            Glyphs::draw(p, Glyphs::Kind::Settings, g, fg, bg);
+            if (m_updateDot)
+            {
+                p.setPen(Qt::NoPen);
+                p.setBrush(Theme::Accent.color());
+                p.drawEllipse(QPointF(b.rect.right() - 11, b.rect.top() + 11), 3.5, 3.5);
+            }
+            break;
         case Kind::Run:      Glyphs::draw(p, Glyphs::Kind::Run, g, fg, bg); break;
         case Kind::Power:    Glyphs::draw(p, Glyphs::Kind::Power, g, fg, bg); break;
         case Kind::Folder:
@@ -248,11 +265,23 @@ void Sidebar::settingsMenu(const QPoint& globalPos)
     // Два вида настроек — сразу оба на выбор, чтобы настройки самого меню было легко найти
     emit busyChanged(true);
     QMenu menu(this);
+    QAction* upd = nullptr;
+    const auto info = Settings::get().checkUpdates ? Updater::available() : std::nullopt;
+    if (info)
+    {
+        upd = menu.addAction(TXT("Обновить до версии %1").arg(info->version));
+        menu.addSeparator();
+    }
     QAction* own = menu.addAction(TXT("Настройки меню…"));
     QAction* win = menu.addAction(TXT("Параметры Windows"));
     QAction* chosen = menu.exec(globalPos);
     emit busyChanged(false);
-    if (chosen == own)
+    if (upd && chosen == upd)
+    {
+        Updater::install(*info);
+        emit launched();
+    }
+    else if (chosen == own)
         WinShell::startSelf(QStringLiteral("--settings"));
     else if (chosen == win)
     {

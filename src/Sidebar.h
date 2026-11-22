@@ -13,6 +13,7 @@ public:
     enum class Mode { Tiles, AllApps, Clipboard };
     void setMode(Mode m);
     void setClipboardDot(bool on);
+    void setUpdateDot(bool on);      // вышла новая версия — точка на «Параметрах»
     void relayout();           // включили/выключили кнопки в настройках
 
 signals:
@@ -55,5 +56,6 @@ private:
     int m_pressed = -1;
     Mode m_mode = Mode::Tiles;
     bool m_clipDot = false;
+    bool m_updateDot = false;
     bool m_muted = false;
 };
