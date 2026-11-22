@@ -843,14 +843,14 @@ namespace
             const QRect first = g.tabRect(0), last = g.tabRect(int(gr.tabs.size()) - 1);
             const QRectF pill = QRectF(first.left() - 3, first.top() - 3, last.right() - first.left() + 7, first.height() + 6);
             p.setPen(Qt::NoPen);
-            p.setBrush(darkText ? white(0.55) : white(0.10));
+            p.setBrush(darkText ? QColor(0, 0, 0, 24) : white(0.10)); // светлая тема: лёгкая тёмная подложка
             p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2);
             for (int i = 0; i < gr.tabs.size(); ++i)
             {
                 const QRectF r = QRectF(g.tabRect(i)).adjusted(0, -1, 0, 1);
                 if (i == gr.activeTab)
                 {
-                    p.setBrush(darkText ? white(0.92) : white(0.22));
+                    p.setBrush(darkText ? QColor(255, 255, 255, 235) : white(0.22)); // светлая тема: белая активная вкладка
                     p.drawRoundedRect(r, r.height() / 2.0, r.height() / 2.0);
                 }
                 // Неактивная — не тусклее 75 %: должна читаться, а не угадываться
