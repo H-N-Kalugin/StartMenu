@@ -359,13 +359,13 @@ void Workspace::relayout()
             r = int(groups[g].tiles().size());
         }
         else
-            packed[g] = packTiles(groups[g].tiles(), groups[g].width, r);
+            packed[g] = packTiles(groups[g].tiles(), groups[g].width > 0 ? groups[g].width : Theme::GroupDefaultCells, r);
         rows[g] = qMax(r, groups[g].listMode ? 1 : 2); // пустая группа всё равно занимает место под одну среднюю плитку
     }
 
     // Ширина группы в ячейках. У обычной — как задана; у блока свободных ярлыков — ровно по его плиткам плюс отступы слева и
     // справа (раньше блок занимал всю заданную ширину, и плитки «плавали» внутри пустого места).
-    QList<int> effW(n);
+    QList<int> effW(n), usedCells(n, 0);
     for (int g = 0; g < n; ++g)
     {
         if (!groups[g].loose)
@@ -376,8 +376,11 @@ void Workspace::relayout()
         int used = 0;
         for (const QRect& cr : packed[g])
             used = qMax(used, cr.x() + cr.width());
-        effW[g] = qMax(1, used) + groups[g].indentL + groups[g].indentR;
+        usedCells[g] = qMax(1, used);
+        // 0 — по размеру ярлыков; иначе блок растянули (мышью или в меню) и плитки стоят внутри него слева / по центру / справа
+        effW[g] = groups[g].width == 0 ? usedCells[g] : qMax(groups[g].width, usedCells[g]);
     }
+    m_usedPx = QList<int>(n, 0);
 
     // 2. Колонки — как сохранено.
     const bool wasReflowed = m_reflowed;
@@ -553,8 +556,14 @@ void Workspace::relayout()
                 geo.header = QRect(rx, y, geo.frame.width(), hdr);
                 geo.body = QRect(rx + pad, y + hdr, bodyW, bodyH);
                 geo.tiles.clear();
-                // Свободные ярлыки: отступ слева сдвигает плитки (в ячейках сетки — ровно как плитки в группах)
-                const int shiftX = g.loose ? g.indentL * (Theme::Cell + Theme::CellGap) : 0;
+                // Свободные ярлыки: плитки стоят слева / по центру / справа внутри растянутого блока
+                int shiftX = 0;
+                if (g.loose)
+                {
+                    m_usedPx[gi] = cellsPx(usedCells[gi]);
+                    shiftX = int((bodyW - m_usedPx[gi]) * (g.alignH / 2.0));
+                    shiftX = qMax(0, shiftX);
+                }
                 for (const QRect& cr : packed[gi])
                     geo.tiles.append(QRect(geo.body.x() + shiftX + cr.x() * (Theme::Cell + Theme::CellGap),
                                            geo.body.y() + cr.y() * (Theme::Cell + Theme::CellGap),
@@ -795,7 +804,7 @@ Workspace::HitInfo Workspace::hitTest(const QPoint& view) const
     for (int g = 0; g < groups.size(); ++g)
     {
         const GroupGeo& geo = m_geo[g];
-        if (!groups[g].loose && gripRect(g).contains(cp))
+        if (gripRect(g).contains(cp))
             return {Hit::Grip, g, -1};
         if (!geo.frame.contains(cp))
             continue;
@@ -1296,9 +1305,25 @@ void Workspace::mousePressEvent(QMouseEvent* e)
         m_pressPos = pos;
         update();
         break;
+    case Hit::Group:
+        // Пустое место растянутого блока свободных ярлыков: потянули влево/вправо — плитки встают слева, по центру, справа
+        if (looseHasSlack(h.g))
+        {
+            m_mode = Mode::AlignDrag;
+            m_press = h;
+            setCursor(Qt::SizeHorCursor);
+        }
+        break;
     default:
         break;
     }
+}
+
+bool Workspace::looseHasSlack(int g) const
+{
+    const auto& groups = Config::instance().groups();
+    return g >= 0 && g < groups.size() && groups[g].loose && g < m_usedPx.size() && g < m_geo.size()
+           && m_geo[g].body.width() - m_usedPx[g] >= Theme::Cell / 2;
 }
 
 void Workspace::mouseMoveEvent(QMouseEvent* e)
@@ -1326,6 +1351,21 @@ void Workspace::mouseMoveEvent(QMouseEvent* e)
         if (cells != gr.width)
         {
             gr.width = cells;
+            relayout();
+            update();
+        }
+        return;
+    }
+    case Mode::AlignDrag:
+    {
+        // Куда потянули внутри блока — в левую, среднюю или правую треть: там плитки и встанут
+        auto& gr = Config::instance().groups()[m_press.g];
+        const QRect body = m_geo[m_press.g].body;
+        const qreal f = body.width() > 0 ? qreal(toContent(pos).x() - body.x()) / body.width() : 0.0;
+        const int align = f < 1.0 / 3 ? 0 : f < 2.0 / 3 ? 1 : 2;
+        if (align != gr.alignH)
+        {
+            gr.alignH = align;
             relayout();
             update();
         }
@@ -1387,6 +1427,7 @@ void Workspace::mouseMoveEvent(QMouseEvent* e)
         switch (h.kind)
         {
         case Hit::Grip: setCursor(Qt::SizeHorCursor); break;
+        case Hit::Group: setCursor(looseHasSlack(h.g) ? Qt::SizeHorCursor : Qt::ArrowCursor); break;
         case Hit::Tile:
         case Hit::Tab:
         case Hit::FolderItem: setCursor(Qt::PointingHandCursor); break;
@@ -1411,6 +1452,9 @@ void Workspace::mouseReleaseEvent(QMouseEvent* e)
     case Mode::Resize:
         m_frozenCell = 0; // ширину выбрали — снова адаптивная ячейка
         finish();
+        break;
+    case Mode::AlignDrag:
+        finish(); // выравнивание выбрали — сохраняем
         break;
     case Mode::Pressed:
     {
@@ -1544,6 +1588,8 @@ bool Workspace::event(QEvent* e)
             tip = TXT("Клик — открыть вкладку, двойной клик — переименовать");
         else if (h.kind == Hit::Grip)
             tip = TXT("Потяните, чтобы изменить ширину группы");
+        else if (h.kind == Hit::Group && looseHasSlack(h.g))
+            tip = TXT("Потяните влево или вправо — ярлыки встанут слева, по центру или справа");
         else if (h.kind == Hit::Header)
             tip = TXT("Двойной клик — переименовать, перетащите — переместить группу");
         if (tip.isEmpty())
@@ -1781,7 +1827,7 @@ void Workspace::addLooseTiles(const QList<Tile>& tiles, int savedColumn)
     ng.loose = true;
     ng.clean = true;
     ng.column = savedColumn;
-    ng.width = Theme::GroupDefaultCells;
+    ng.width = 0; // по размеру ярлыков
     ng.tiles() = tiles;
     groups.append(ng);
 }
@@ -2107,7 +2153,13 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
     QMenu* addMenu = menu.addMenu(TXT("Добавить"));
     QAction* addFolder = addMenu->addAction(TXT("Папку…"));
     QAction* addLink = addMenu->addAction(TXT("Ссылку на сайт…"));
+    // Ширину блока можно тянуть мышью за правый край; здесь — готовые варианты. «По размеру ярлыков» — без запаса справа.
     QMenu* widthMenu = menu.addMenu(TXT("Ширина"));
+    QAction* autoW = widthMenu->addAction(TXT("По размеру ярлыков"));
+    autoW->setCheckable(true);
+    autoW->setChecked(group.width == 0);
+    autoW->setData(1);
+    widthMenu->addSeparator();
     const QList<QPair<int, QString>> widths{{4, TXT("Узкая")}, {8, TXT("Средняя")}, {12, TXT("Широкая")}, {16, TXT("Очень широкая")}};
     for (const auto& w : widths)
     {
@@ -2116,24 +2168,19 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
         a->setChecked(group.width == w.first);
         a->setData(w.first);
     }
-    // Отступы слева и справа — в долях обычной плитки (2 ячейки сетки = одна плитка)
-    static const int kIndents[] = {0, 1, 2, 3, 4, 6, 8};
-    static const char* kIndentNames[] = {nullptr, "\u00bd", "1", "1\u00bd", "2", "3", "4"};
-    auto addIndentMenu = [&](const QString& title, int base, int current) {
-        QMenu* m = menu.addMenu(title);
-        for (int k = 0; k < 7; ++k)
-        {
-            QAction* a = m->addAction(k == 0 ? TXT("Нет") : QString::fromUtf8(kIndentNames[k]));
-            a->setCheckable(true);
-            a->setChecked(current == kIndents[k]);
-            a->setData(base + k);
-        }
-    };
-    addIndentMenu(TXT("Отступ слева, в плитках"), 300, group.indentL);
-    addIndentMenu(TXT("Отступ справа, в плитках"), 400, group.indentR);
-    // По вертикали — относительно плиток соседних групп
+    // Где стоят плитки внутри растянутого блока (то же — потянуть мышью по пустому месту блока) и по вертикали между соседями
     QMenu* alignMenu = menu.addMenu(TXT("Выравнивание"));
+    const QStringList hNames{TXT("Слева"), TXT("По центру"), TXT("Справа")};
     const QStringList vNames{TXT("Сверху"), TXT("По центру"), TXT("Снизу")};
+    alignMenu->addSection(TXT("По горизонтали"));
+    for (int k = 0; k < 3; ++k)
+    {
+        QAction* a = alignMenu->addAction(hNames[k]);
+        a->setCheckable(true);
+        a->setChecked(group.alignH == k);
+        a->setData(100 + k);
+    }
+    alignMenu->addSection(TXT("По вертикали"));
     for (int k = 0; k < 3; ++k)
     {
         QAction* a = alignMenu->addAction(vNames[k]);
@@ -2148,16 +2195,16 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
     if (!chosen)
         return;
     auto& groups = Config::instance().groups();
-    if (chosen->data().isValid() && chosen->data().toInt() >= 200)
+    if (chosen->data().isValid() && chosen->data().toInt() >= 100)
     {
         const int code = chosen->data().toInt();
-        if (code < 300)
-            groups[g].alignV = code - 200;
-        else if (code < 400)
-            groups[g].indentL = kIndents[code - 300];
+        if (code < 200)
+            groups[g].alignH = code - 100;
         else
-            groups[g].indentR = kIndents[code - 400];
+            groups[g].alignV = code - 200;
     }
+    else if (chosen == autoW)
+        groups[g].width = 0;
     else if (chosen == toGroup)
     {
         groups[g].loose = false;

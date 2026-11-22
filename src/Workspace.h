@@ -29,6 +29,7 @@ public:
     bool activateFocus();      // Enter по выбранной плитке
     static const char* itemMime();    // перетаскивание из «Всех приложений»
     QRect tileViewRect(int g, int t) const { return toView(m_geo.value(g).tiles.value(t)); } // для самопроверки
+    QRect groupViewRect(int g) const { return toView(m_geo.value(g).frame); }
 
 signals:
     void launched();
@@ -77,7 +78,7 @@ private:
         int t = -1;
         int child = -1;
     };
-    enum class Mode { Idle, Pressed, DragTile, DragGroup, Resize };
+    enum class Mode { Idle, Pressed, DragTile, DragGroup, Resize, AlignDrag };
 
     struct GroupGeo
     {
@@ -156,6 +157,8 @@ private:
     QList<int> m_visualCol;    // в какой колонке группа стоит на экране (при узком окне может отличаться от сохранённой)
     QList<bool> m_rowStart;    // группа начинает ряд (а не стоит справа от соседней)
     QList<int> m_number;       // сквозной номер группы по колонкам сверху вниз
+    QList<int> m_usedPx;       // у блока свободных ярлыков: сколько пикселей по ширине занимают сами плитки
+    bool looseHasSlack(int g) const; // блок шире своих плиток — плитки можно двигать влево/вправо
     void emitHoverInfo();
     bool m_reflowed = false;   // окно узкое — группы перестроены в меньшее число колонок
     int savedColumnFor(int visualCol) const; // экранная колонка → сохранённая (правки не портят исходную раскладку)

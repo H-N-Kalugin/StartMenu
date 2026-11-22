@@ -702,6 +702,70 @@ int main(int argc, char* argv[])
                 out.write(log.join(QLatin1Char('\n')).toUtf8());
             return 0;
         }
+        if (qstrcmp(argv[i], "--selftest-align") == 0 && i + 2 < argc)
+        {
+            // Служебное: проверка блока свободных ярлыков мышью без экрана — ширина за правый край и выравнивание
+            // потягиванием по пустому месту. --selftest-align <items.json> <отчёт.txt>
+            QApplication app(argc, argv);
+            setupApp(app);
+            Settings::get().load();
+            Lang::load(QStringLiteral("en"));
+            Config::instance().setFileOverride(QString::fromLocal8Bit(argv[i + 1]));
+            Config::instance().load();
+            IconCache icons;
+            Workspace w(&icons);
+            w.resize(1100, 500);
+            w.show();
+            QCoreApplication::processEvents();
+            QStringList log;
+            int looseG = -1;
+            const auto& gs = Config::instance().groups();
+            for (int g = 0; g < gs.size(); ++g)
+                if (gs[g].loose)
+                    looseG = g;
+            auto state = [&](const QString& what) {
+                const Group& g = Config::instance().groups()[looseG];
+                const QRect t0 = w.tileViewRect(looseG, 0), fr = w.groupViewRect(looseG);
+                log << QStringLiteral("%1: width=%2 alignH=%3  frame x=%4..%5  first tile x=%6").arg(what).arg(g.width).arg(g.alignH)
+                           .arg(fr.left()).arg(fr.right()).arg(t0.left());
+            };
+            auto send = [&](QEvent::Type type, QPoint p, Qt::MouseButton b, Qt::MouseButtons bs) {
+                QMouseEvent ev(type, QPointF(p), QPointF(w.mapToGlobal(p)), b, bs, Qt::NoModifier);
+                QCoreApplication::sendEvent(&w, &ev);
+            };
+            auto drag = [&](QPoint from, QPoint to) {
+                send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+                send(QEvent::MouseMove, from + QPoint(6, 0), Qt::NoButton, Qt::LeftButton);
+                send(QEvent::MouseMove, to, Qt::NoButton, Qt::LeftButton);
+                send(QEvent::MouseButtonRelease, to, Qt::LeftButton, Qt::NoButton);
+                QCoreApplication::processEvents();
+            };
+            if (looseG >= 0)
+            {
+                state(QStringLiteral("start"));
+                // 1. Потянуть правый край блока вправо — блок растягивается
+                QRect fr = w.groupViewRect(looseG);
+                drag(QPoint(fr.right() - 1, fr.center().y()), QPoint(fr.right() + 200, fr.center().y()));
+                state(QStringLiteral("after dragging the right edge +200px"));
+                // 2. Потянуть по пустому месту блока в правую треть — плитки встают справа
+                fr = w.groupViewRect(looseG);
+                const int y = w.tileViewRect(looseG, 0).center().y();
+                drag(QPoint(fr.right() - 40, y), QPoint(fr.right() - 40, y));
+                state(QStringLiteral("press+release in the right third (empty area)"));
+                // 3. И обратно — в левую треть
+                fr = w.groupViewRect(looseG);
+                drag(QPoint(fr.left() + 25, y), QPoint(fr.left() + 25, y));
+                state(QStringLiteral("press+release in the left third (empty area)"));
+                // 4. В середину
+                fr = w.groupViewRect(looseG);
+                drag(QPoint(fr.right() - 40, y), QPoint(fr.center().x(), y)); // нажали на пустом, довели до середины
+                state(QStringLiteral("press in the empty right area, drag to the middle"));
+            }
+            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text))
+                out.write(log.join(QLatin1Char('\n')).toUtf8());
+            return 0;
+        }
         if (qstrcmp(argv[i], "--media-info") == 0 && i + 1 < argc)
         {
             // Служебное: что сейчас играет в Windows (источник, трек, есть ли обложка). --media-info <файл-результат>

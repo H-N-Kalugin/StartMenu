@@ -116,8 +116,14 @@ namespace
             g.labels = go["labels"].toInt(-1);
             g.listMode = go["list"].toBool();
             g.loose = go["loose"].toBool();
-            g.indentL = std::clamp(go["indentL"].toInt(0), 0, 24);
-            g.indentR = std::clamp(go["indentR"].toInt(0), 0, 24);
+            g.alignH = std::clamp(go["alignH"].toInt(0), 0, 2);
+            // Блоки свободных ярлыков из прежних версий: ширина была «как у группы» и плитки плавали внутри неё —
+            // теперь они «по размеру ярлыков» и слева (новые блоки помечены looseV = 2)
+            if (g.loose && go["looseV"].toInt(1) < 2)
+            {
+                g.width = 0;
+                g.alignH = 0;
+            }
             g.alignV = std::clamp(go["alignV"].toInt(1), 0, 2);
             // Вкладки; группа без "tabs" (ранний формат) — одна вкладка из title/tiles.
             const QJsonArray tabs = go.contains("tabs") ? go["tabs"].toArray() : QJsonArray{go};
@@ -153,8 +159,8 @@ namespace
             if (g.loose)
             {
                 go["loose"] = true;
-                go["indentL"] = g.indentL;
-                go["indentR"] = g.indentR;
+                go["alignH"] = g.alignH;
+                go["looseV"] = 2;
                 go["alignV"] = g.alignV;
             }
             arr.append(go);
@@ -409,7 +415,8 @@ void Config::normalizeGroups(QList<Group>& groups)
     QList<int> used;
     for (Group& g : groups)
     {
-        g.width = std::clamp(g.width, Theme::GroupMinCells, Theme::GroupMaxCells);
+        if (!(g.loose && g.width == 0)) // у блока свободных ярлыков 0 — «по размеру ярлыков»
+            g.width = std::clamp(g.width, Theme::GroupMinCells, Theme::GroupMaxCells);
         g.column = qMax(0, g.column);
         if (!used.contains(g.column))
             used.append(g.column);
