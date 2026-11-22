@@ -453,5 +453,9 @@
 "451": "With labels",
 "452": "No labels",
 "453": "On",
-"454": "Off"
+"454": "Off",
+"455": "Switches instead of checkboxes: On | Off in settings and the wizard",
+"456": "Width and alignment of free shortcuts by mouse: drag on the empty part of the block",
+"457": "The version number is always clickable: check, hide the notice, auto-update",
+"458": "The first-run wizard lets you pick tiles with or without labels"
 }
