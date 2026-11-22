@@ -225,14 +225,14 @@ private:
 
 // ---------- превью ----------
 
-QImage WelcomeWindow::renderPreview(int kind, bool fill, qreal dpr)
+QImage WelcomeWindow::renderPreview(int kind, bool fill, bool labels, qreal dpr)
 {
     // Тема стиля — как у пресета «Стандартный для стиля», только в памяти.
     Settings tmp;
     tmp.skin = kind;
     Skin::select(kind);
     Skin::current().preset(tmp);
-    tmp.showLabels = true;
+    tmp.showLabels = labels;
     tmp.adaptive = false;
     tmp.cell = 46;
     tmp.tileFill = fill ? 1 : 0;
@@ -363,7 +363,7 @@ QImage WelcomeWindow::renderPreview(int kind, bool fill, qreal dpr)
             t.tile = &tiles[i];
             t.r = r;
             t.clean = d.clean;
-            t.showLabel = true;
+            t.showLabel = labels;
             t.hover = (gi == 0 && i == 0) ? 1.0 : 0.0; // плитка «под курсором» — для строки внизу
             t.tint = c;
             t.icon = paintStubIcon;
@@ -383,7 +383,7 @@ QImage WelcomeWindow::renderPreview(int kind, bool fill, qreal dpr)
 
 // ---------- окно ----------
 
-WelcomeWindow::WelcomeWindow(int skin, bool fill)
+WelcomeWindow::WelcomeWindow(int skin, bool fill, bool labels)
 {
     setWindowTitle(TXT("Добро пожаловать в StartMenu"));
     setAttribute(Qt::WA_DeleteOnClose);
@@ -419,6 +419,7 @@ WelcomeWindow::WelcomeWindow(int skin, bool fill)
         QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
     )"));
     m_fill->setChecked(fill);
+    m_labels->setChecked(labels && !qEnvironmentVariableIsSet("STARTMENU_WELCOME_NOLABELS")); // переменная — для снимков
     selectStyle(skin >= 0 ? skin : Settings::get().skin);
     refreshPreviews();
     WinShell::setDarkTitleBar(this);
@@ -442,7 +443,7 @@ QWidget* WelcomeWindow::buildStylePage()
         s.language = langBox->itemData(i).toString();
         s.save();
         Lang::load(s.language);
-        auto* w = new WelcomeWindow(m_skin, m_fill->isChecked());
+        auto* w = new WelcomeWindow(m_skin, m_fill->isChecked(), m_labels->isChecked());
         w->setGeometry(geometry());
         w->show();
         close();
@@ -468,9 +469,20 @@ QWidget* WelcomeWindow::buildStylePage()
         grid->addWidget(card, i / 2, i % 2);
     }
     v->addLayout(grid);
-    v->addSpacing(10);
+    v->addSpacing(6);
+    // Всё выбранное здесь не навсегда — подсказываем, где это поменять потом
+    auto* note = new QLabel(TXT("Всё это можно изменить в любой момент: «Настройки меню» → «Плитки и окно» или правый клик по пустому месту меню."));
+    note->setObjectName("sub");
+    note->setWordWrap(true);
+    v->addWidget(note);
+    v->addSpacing(6);
 
     auto* bottom = new QHBoxLayout;
+    m_labels = new QCheckBox(TXT("Подписи под плитками"));
+    m_labels->setToolTip(TXT("Название приложения под значком. Без подписей плитки выглядят чище — значок по центру."));
+    connect(m_labels, &QCheckBox::toggled, this, &WelcomeWindow::refreshPreviews);
+    bottom->addWidget(m_labels);
+    bottom->addSpacing(16);
     m_fill = new QCheckBox(TXT("Заливать плитки цветом иконки"));
     m_fill->setToolTip(TXT("Фон каждой плитки — в цвет её иконки. Потом можно выбрать и «размытую иконку»."));
     connect(m_fill, &QCheckBox::toggled, this, &WelcomeWindow::refreshPreviews);
@@ -637,8 +649,9 @@ void WelcomeWindow::refreshPreviews()
 {
     const qreal dpr = devicePixelRatioF() * 1.0;
     const bool fill = m_fill && m_fill->isChecked();
+    const bool labels = !m_labels || m_labels->isChecked();
     for (int i = 0; i < m_cards.size(); ++i)
-        m_cards[i]->setPreview(renderPreview(i, fill, qMax(1.0, dpr)));
+        m_cards[i]->setPreview(renderPreview(i, fill, labels, qMax(1.0, dpr)));
 }
 
 void WelcomeWindow::selectStyle(int skin)
@@ -655,7 +668,7 @@ void WelcomeWindow::goTo(int page)
     if (page == 2)
     {
         const qreal dpr = qMax(1.0, devicePixelRatioF());
-        QPixmap pm = QPixmap::fromImage(renderPreview(m_skin, m_fill->isChecked(), dpr * 1.2));
+        QPixmap pm = QPixmap::fromImage(renderPreview(m_skin, m_fill->isChecked(), m_labels->isChecked(), dpr * 1.2));
         pm.setDevicePixelRatio(dpr * 1.2);
         m_final->setPixmap(pm);
     }
@@ -741,6 +754,7 @@ void WelcomeWindow::finish(bool openMenu)
         s.preset = 1;
     }
     s.tileFill = m_fill->isChecked() ? 1 : 0;
+    s.showLabels = m_labels->isChecked();
     s.clipboardHistory = m_clipboard && m_clipboard->isChecked();
     s.lastSeenVersion = Updater::currentVersion(); // свежая установка: карточку «Что нового» не показываем
     s.save();

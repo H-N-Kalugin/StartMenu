@@ -20,10 +20,10 @@ class WelcomeWindow : public QWidget
 {
     Q_OBJECT
 public:
-    explicit WelcomeWindow(int skin = -1, bool fill = false); // skin/fill — сохранить выбор при смене языка
+    explicit WelcomeWindow(int skin = -1, bool fill = false, bool labels = true); // skin/fill/labels — сохранить выбор при смене языка
 
     // Превью стиля: то же рисование, что и в меню, только с плитками-заглушками.
-    static QImage renderPreview(int skin, bool fill, qreal dpr);
+    static QImage renderPreview(int skin, bool fill, bool labels, qreal dpr);
     // Для проверки без показа: сохранить страницы мастера в PNG.
     void saveShots(const QString& dir);
 
@@ -42,6 +42,7 @@ private:
     QStackedWidget* m_pages = nullptr;
     QList<StyleCard*> m_cards;
     QCheckBox* m_fill = nullptr;
+    QCheckBox* m_labels = nullptr;        // подписи под плитками (по умолчанию да)
     int m_skin = 1;
 
     QListWidget* m_apps = nullptr;

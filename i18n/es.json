@@ -446,5 +446,8 @@
 "444": "Sangría izquierda, en mosaicos",
 "445": "Sangría derecha, en mosaicos",
 "446": "Arrastra a izquierda o derecha: los accesos directos quedarán a la izquierda, al centro o a la derecha",
-"447": "Ajustar a los accesos directos"
+"447": "Ajustar a los accesos directos",
+"448": "Todo esto se puede cambiar en cualquier momento: «Configuración del menú» → «Mosaicos y ventana» o clic derecho en un hueco del menú.",
+"449": "Etiquetas bajo los mosaicos",
+"450": "El nombre de la app bajo el icono. Sin etiquetas, los mosaicos se ven más limpios: el icono queda centrado."
 }

@@ -446,5 +446,8 @@
 "444": "Left indent, in tiles",
 "445": "Right indent, in tiles",
 "446": "Drag left or right — the shortcuts will line up left, center or right",
-"447": "Fit to shortcuts"
+"447": "Fit to shortcuts",
+"448": "You can change all of this at any time: “Menu settings” → “Tiles and window”, or right-click an empty spot in the menu.",
+"449": "Labels under tiles",
+"450": "The app name under the icon. Without labels the tiles look cleaner — the icon sits in the center."
 }
