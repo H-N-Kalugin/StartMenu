@@ -1,4 +1,5 @@
 #include "Welcome.h"
+#include "Demo.h"
 #include "Updater.h"
 #include "Lang.h"
 #include "Glyphs.h"
@@ -679,6 +680,17 @@ void WelcomeWindow::goTo(int page)
 void WelcomeWindow::loadApps()
 {
     m_allApps = WinShell::allApps();
+    if (Demo::active())
+    {
+        // Снимки для страницы проекта: нейтральный список вместо установленных у человека программ
+        m_allApps.clear();
+        const std::pair<const char*, const char*> demo[] = {
+            {"Браузер", "browser"}, {"Почта", "mail"}, {"Календарь", "calendar"}, {"Заметки", "notes"}, {"Файлы", "files"},
+            {"Дизайн", "design"}, {"Фото", "photos"}, {"Видео", "video"}, {"Код", "code"}, {"Музыка", "music"},
+            {"Игры", "games"}, {"Чат", "chat"}};
+        for (const auto& d : demo)
+            m_allApps.append({Lang::tr(QString::fromUtf8(d.first)), QStringLiteral("demo:") + QLatin1String(d.second), {}, {}});
+    }
     std::sort(m_allApps.begin(), m_allApps.end(), [](const Item& a, const Item& b) {
         return QString::localeAwareCompare(a.name, b.name) < 0;
     });
@@ -703,7 +715,8 @@ void WelcomeWindow::loadSomeIcons()
     for (; m_iconNext < end; ++m_iconNext)
     {
         QListWidgetItem* it = m_apps->item(m_iconNext);
-        const QPixmap pm = WinShell::loadIcon(m_allApps[it->data(Qt::UserRole).toInt()].path, 48);
+        const QString path = m_allApps[it->data(Qt::UserRole).toInt()].path;
+        const QPixmap pm = Demo::active() ? QPixmap::fromImage(Demo::icon(path, 48)) : WinShell::loadIcon(path, 48);
         if (!pm.isNull())
             it->setIcon(QIcon(pm));
     }
@@ -723,6 +736,7 @@ void WelcomeWindow::setRecommended()
         QStringLiteral("Adobe Photoshop"), QStringLiteral("Zoom"), QStringLiteral("WhatsApp"), QStringLiteral("VLC"),
         QStringLiteral("Microsoft Word"), QStringLiteral("Microsoft Excel"), QStringLiteral("Word"), QStringLiteral("Excel"),
         QStringLiteral("Epic Games Launcher"), QStringLiteral("Figma"), QStringLiteral("OBS Studio"),
+        TXT("Браузер"), TXT("Почта"), TXT("Календарь"), TXT("Фото"), TXT("Музыка"), TXT("Чат"),
     };
     for (int i = 0; i < m_apps->count(); ++i)
     {

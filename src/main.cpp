@@ -873,6 +873,8 @@ int main(int argc, char* argv[])
                 const int li = int(app.arguments().indexOf(QStringLiteral("--lang")));
                 Lang::load(li >= 0 && li + 1 < app.arguments().size() ? app.arguments()[li + 1] : Settings::get().language);
             }
+            if (app.arguments().contains(QStringLiteral("--demo")))
+                Demo::enable(); // нейтральный список приложений для снимков
             auto* w = new WelcomeWindow;
             const int si = int(app.arguments().indexOf(QStringLiteral("--welcome-shots")));
             if (si >= 0 && si + 1 < app.arguments().size())

@@ -45,6 +45,8 @@ MediaPlayer::MediaPlayer(QWidget* parent)
         m_posClock.invalidate();
         return;
     }
+    if (qEnvironmentVariableIsSet("STARTMENU_NO_MEDIA"))
+        return; // снимки без демо-режима: настоящий плеер пользователя в кадр не попадает
     // Ответ приходит из фонового потока — передаём в окно через очередь событий Qt.
     QPointer<MediaPlayer> self(this);
     m_watcher = std::make_unique<Media::Watcher>([self](const Media::State& s) {
