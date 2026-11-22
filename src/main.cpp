@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -36,6 +37,8 @@
 #include "StartWindow.h"
 #include "Theme.h"
 #include "Welcome.h"
+#include "Workspace.h"
+#include "IconCache.h"
 #include "Updater.h"
 
 #include <windows.h>
@@ -625,6 +628,59 @@ int main(int argc, char* argv[])
             Skin::current().preset(s);
             s.preset = 1;
             s.save();
+            return 0;
+        }
+        if (qstrcmp(argv[i], "--selftest-loose") == 0 && i + 2 < argc)
+        {
+            // Служебное: проверка свободных ярлыков без экрана. Читает раскладку из файла (копии), «мышью» тащит плитки
+            // из группы на пустое место и пишет итог в текстовый файл. --selftest-loose <items.json> <отчёт.txt>
+            QApplication app(argc, argv);
+            setupApp(app);
+            Settings::get().load();
+            Lang::load(QStringLiteral("en"));
+            Config::instance().setFileOverride(QString::fromLocal8Bit(argv[i + 1]));
+            Config::instance().load();
+            IconCache icons;
+            Workspace w(&icons);
+            w.resize(1100, 500);
+            w.show();
+            QCoreApplication::processEvents();
+            QStringList log;
+            auto summary = [&](const QString& what) {
+                log << what;
+                const auto& groups = Config::instance().groups();
+                for (int g = 0; g < groups.size(); ++g)
+                {
+                    QStringList names;
+                    for (const Tile& t : groups[g].tiles())
+                        names << t.item.name;
+                    log << QStringLiteral("  [%1] %2 col=%3 loose=%4 tiles=%5").arg(g).arg(groups[g].loose ? QStringLiteral("(loose)") : groups[g].title())
+                               .arg(groups[g].column).arg(groups[g].loose).arg(names.join(QStringLiteral(",")));
+                }
+            };
+            auto drag = [&](int g, int t, QPoint to) {
+                const QPoint from = w.tileViewRect(g, t).center();
+                auto send = [&](QEvent::Type type, QPoint p, Qt::MouseButton b, Qt::MouseButtons bs) {
+                    QMouseEvent ev(type, QPointF(p), QPointF(w.mapToGlobal(p)), b, bs, Qt::NoModifier);
+                    QCoreApplication::sendEvent(&w, &ev);
+                };
+                send(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+                send(QEvent::MouseMove, from + QPoint(30, 0), Qt::NoButton, Qt::LeftButton);
+                send(QEvent::MouseMove, to, Qt::NoButton, Qt::LeftButton);
+                send(QEvent::MouseButtonRelease, to, Qt::LeftButton, Qt::NoButton);
+                QCoreApplication::processEvents();
+            };
+            summary(QStringLiteral("start"));
+            drag(0, 0, QPoint(950, 440));            // из группы — на пустое место справа (новая колонка)
+            summary(QStringLiteral("group tile -> empty space, new column"));
+            drag(1, 0, QPoint(300, 460));            // свободный ярлык — на пустое место под колонкой 0
+            summary(QStringLiteral("loose tile -> empty space under column 0"));
+            const auto& gs = Config::instance().groups();
+            drag(int(gs.size()) - 1, 0, QPoint(950, 460)); // из последнего блока на пустое место справа
+            summary(QStringLiteral("last block tile -> empty space right"));
+            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            if (out.open(QIODevice::WriteOnly | QIODevice::Text))
+                out.write(log.join(QLatin1Char('\n')).toUtf8());
             return 0;
         }
         if (qstrcmp(argv[i], "--check-updates") == 0)

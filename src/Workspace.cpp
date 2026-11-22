@@ -307,6 +307,17 @@ void Workspace::reload()
     m_press = {};
     m_fade.clear();
     m_frozenCell = 0;
+    {
+        // Иконки плиток — заранее и в фоне: к моменту отрисовки они уже лежат в кэше на диске
+        QStringList sources;
+        for (const Group& g : Config::instance().groups())
+            for (const Tab& tab : g.tabs)
+                for (const Tile& t : tab.tiles)
+                    for (const Item& it : t.isFolder ? t.children : QList<Item>{t.item})
+                        sources << (it.icon.isEmpty() ? it.path : it.icon);
+        sources.removeDuplicates();
+        IconCache::prefetch(sources);
+    }
     setScroll(0, 0);
     relayout();
     update();
@@ -390,7 +401,7 @@ void Workspace::relayout()
                 for (int g : row)
                 {
                     ra += groups[g].width;
-                    rb += groups[g].width * gap - gap + 2 * Theme::GroupPad;
+                    rb += groups[g].width * gap - gap + 2 * padOf(groups[g]);
                 }
                 if (ra * 46 + rb > ba * 46 + bb)
                 {
@@ -412,11 +423,15 @@ void Workspace::relayout()
             for (const QList<int>& row : rs)
             {
                 // Длинный список не должен сжимать все плитки — его досматривают прокруткой
-                int maxRows = 0;
+                int maxRows = 0, hdr = 0, pad = 0;
                 for (int g : row)
+                {
                     maxRows = qMax(maxRows, groups[g].listMode ? qMin(rows[g], 2) : rows[g]);
+                    hdr = qMax(hdr, headerOf(groups[g]));
+                    pad = qMax(pad, padOf(groups[g]));
+                }
                 a += maxRows;
-                b += Theme::GroupHeader + maxRows * gap - gap + Theme::GroupPad;
+                b += hdr + maxRows * gap - gap + pad;
             }
             if (a > 0)
                 best = qMin(best, (height() - b) / a);
@@ -454,10 +469,13 @@ void Workspace::relayout()
             for (auto it = savedRows.cbegin(); it != savedRows.cend(); ++it)
                 for (const QList<int>& row : it.value())
                 {
-                    int maxRows = 0;
+                    int maxRows = 0, hdr = 0;
                     for (int g : row)
+                    {
                         maxRows = qMax(maxRows, rows[g]);
-                    blockH[it.key()] += Theme::GroupHeader + maxRows * (Theme::ReflowCell + gap) + Theme::GroupGapY;
+                        hdr = qMax(hdr, headerOf(groups[g]));
+                    }
+                    blockH[it.key()] += hdr + maxRows * (Theme::ReflowCell + gap) + Theme::GroupGapY;
                 }
 
             for (int k = int(saved.size()) - 1; k >= 1; --k)
@@ -514,9 +532,10 @@ void Workspace::relayout()
                 const int bodyW = cellsPx(g.width);
                 const int bodyH = cellsPx(rows[gi]);
                 GroupGeo& geo = m_geo[gi];
-                geo.frame = QRect(rx, y, bodyW + 2 * Theme::GroupPad, Theme::GroupHeader + bodyH + Theme::GroupPad);
-                geo.header = QRect(rx, y, geo.frame.width(), Theme::GroupHeader);
-                geo.body = QRect(rx + Theme::GroupPad, y + Theme::GroupHeader, bodyW, bodyH);
+                const int hdr = headerOf(g), pad = padOf(g);
+                geo.frame = QRect(rx, y, bodyW + 2 * pad, hdr + bodyH + pad);
+                geo.header = QRect(rx, y, geo.frame.width(), hdr);
+                geo.body = QRect(rx + pad, y + hdr, bodyW, bodyH);
                 geo.tiles.clear();
                 for (const QRect& cr : packed[gi])
                     geo.tiles.append(QRect(geo.body.x() + cr.x() * (Theme::Cell + Theme::CellGap),
@@ -547,8 +566,9 @@ void Workspace::relayout()
         return m_geo[a].frame.left() < m_geo[b].frame.left();
     });
     m_number = QList<int>(n);
+    int numbered = 0;
     for (int i = 0; i < n; ++i)
-        m_number[order[i]] = i + 1;
+        m_number[order[i]] = groups[order[i]].loose ? 0 : ++numbered;
     setScroll(m_scrollX, m_scrollY);
 }
 
@@ -591,11 +611,13 @@ QRect Workspace::titleRect(int g) const
 
 QStringList Workspace::statsLine() const
 {
-    int tiles = 0;
+    int tiles = 0, groups = 0;
     for (const Group& g : Config::instance().groups())
+    {
+        groups += g.loose ? 0 : 1;
         for (const Tab& t : g.tabs)
             tiles += int(t.tiles.size());
-    const int groups = int(Config::instance().groups().size());
+    }
     // Склонение: 1 группа, 3 группы, 5 групп.
     auto plural = [](int n, const QString& one, const QString& few, const QString& many) {
         const int k = Lang::pluralIndex(n);
@@ -625,7 +647,8 @@ void Workspace::emitHoverInfo()
     else
         location = WinShell::locationOf(t.item);
     emit hoverInfo(t.item.name,
-                   QStringLiteral("%1 / %2 · %3").arg(g.title().toUpper()).arg(m_hover.t + 1, 2, 10, QLatin1Char('0')).arg(size),
+                   g.loose ? QStringLiteral("%1 · %2").arg(m_hover.t + 1, 2, 10, QLatin1Char('0')).arg(size)
+                           : QStringLiteral("%1 / %2 · %3").arg(g.title().toUpper()).arg(m_hover.t + 1, 2, 10, QLatin1Char('0')).arg(size),
                    location);
 }
 
@@ -650,7 +673,8 @@ QRect Workspace::tabRect(int g, int tab) const
 QRect Workspace::gripRect(int g) const
 {
     const QRect f = m_geo[g].frame;
-    return QRect(f.right() - 4, f.top() + Theme::GroupHeader, 9, f.height() - Theme::GroupHeader);
+    const int hdr = m_geo[g].header.height();
+    return QRect(f.right() - 4, f.top() + hdr, 9, f.height() - hdr);
 }
 
 int Workspace::columnAt(int contentX) const
@@ -1014,7 +1038,8 @@ void Workspace::paintEvent(QPaintEvent* e)
                     gp.auto2 = c;
             }
         }
-        Skin::current().paintGroup(p, gp);
+        if (!gr.loose)
+            Skin::current().paintGroup(p, gp);
         if ((m_hover.kind == Hit::Grip && m_hover.g == g) || (m_mode == Mode::Resize && m_press.g == g))
         {
             const QRect gr2 = gripRect(g);
@@ -1205,7 +1230,7 @@ void Workspace::mouseMoveEvent(QMouseEvent* e)
     {
         auto& gr = Config::instance().groups()[m_press.g];
         const QRect frame = m_geo[m_press.g].frame;
-        const int cx = toContent(pos).x() - (frame.x() + Theme::GroupPad);
+        const int cx = toContent(pos).x() - (frame.x() + padOf(gr));
         const int cells = std::clamp((cx + Theme::CellGap + Theme::Cell / 2) / (Theme::Cell + Theme::CellGap),
                                      Theme::GroupMinCells, Theme::GroupMaxCells);
         if (cells != gr.width)
@@ -1522,8 +1547,8 @@ Workspace::Drop Workspace::computeTileDrop(const QPoint& view, const Source& src
     }
     else if (!m_columns.isEmpty())
         x = m_columns.last().x + m_columns.last().width + Theme::GroupGapX;
-    d.indicator = QRect(x, y, cellsPx(Theme::GroupDefaultCells) + 2 * Theme::GroupPad,
-                        Theme::GroupHeader + mediumPx() + Theme::GroupPad);
+    // Свободный ярлык: на пустом месте ляжет сам, рядом с другими свободными ярлыками колонки
+    d.indicator = QRect(x, y, mediumPx(), mediumPx());
     return d;
 }
 
@@ -1635,12 +1660,28 @@ void Workspace::applyTileDrop(const Drop& d, QList<Tile> moving, const Source& s
     }
     case DropKind::NewGroup:
     {
-        Group ng;
-        ng.title() = TXT("Новая группа");
-        ng.column = savedColumnFor(d.column);
-        ng.width = Theme::GroupDefaultCells;
-        ng.tiles() = moving;
-        groups.append(ng);
+        // Пустое место — свободный ярлык. Он ложится в блок свободных ярлыков этой колонки и сам выстраивается рядом
+        // с остальными; нет блока — создаётся новый.
+        const int col = savedColumnFor(d.column);
+        int loose = -1;
+        for (int i = 0; i < groups.size(); ++i)
+            if (groups[i].loose && groups[i].column == col)
+            {
+                loose = i;
+                break;
+            }
+        if (loose >= 0)
+            groups[loose].tiles() += moving;
+        else
+        {
+            Group ng;
+            ng.loose = true;
+            ng.clean = true;
+            ng.column = col;
+            ng.width = Theme::GroupDefaultCells;
+            ng.tiles() = moving;
+            groups.append(ng);
+        }
         break;
     }
     default:
@@ -1768,7 +1809,12 @@ void Workspace::contextMenuEvent(QContextMenuEvent* e)
         break;
     case Hit::Header:
     case Hit::Grip:
-    case Hit::Group: groupMenu(h.g, e->globalPos()); break;
+    case Hit::Group:
+        if (Config::instance().groups()[h.g].loose)
+            looseMenu(h.g, e->globalPos());
+        else
+            groupMenu(h.g, e->globalPos());
+        break;
     default: emptyMenu(e->pos(), e->globalPos()); break;
     }
 }
@@ -1961,6 +2007,63 @@ void Workspace::tileMenu(int g, int t, const QPoint& globalPos)
         }
         tiles.removeAt(t);
     }
+    finish();
+}
+
+void Workspace::looseMenu(int g, const QPoint& globalPos)
+{
+    BusyGuard busy(this);
+    const Group group = Config::instance().groups()[g];
+    QMenu menu(this);
+    QAction* toGroup = menu.addAction(TXT("Сделать группой"));
+    QMenu* addMenu = menu.addMenu(TXT("Добавить"));
+    QAction* addFolder = addMenu->addAction(TXT("Папку…"));
+    QAction* addLink = addMenu->addAction(TXT("Ссылку на сайт…"));
+    QMenu* widthMenu = menu.addMenu(TXT("Ширина"));
+    const QList<QPair<int, QString>> widths{{4, TXT("Узкая")}, {8, TXT("Средняя")}, {12, TXT("Широкая")}, {16, TXT("Очень широкая")}};
+    for (const auto& w : widths)
+    {
+        QAction* a = widthMenu->addAction(w.second);
+        a->setCheckable(true);
+        a->setChecked(group.width == w.first);
+        a->setData(w.first);
+    }
+    const bool groupLabels = group.labels >= 0 ? group.labels == 1 : Theme::ShowLabels;
+    QAction* labels = addCheck(menu, TXT("Подписи плиток"), groupLabels);
+
+    QAction* chosen = menu.exec(globalPos);
+    if (!chosen)
+        return;
+    auto& groups = Config::instance().groups();
+    if (chosen == toGroup)
+    {
+        groups[g].loose = false;
+        groups[g].clean = false;
+        groups[g].title() = TXT("Новая группа");
+    }
+    else if (chosen == addFolder)
+    {
+        BusyGuard busy2(this);
+        const QString dir = QFileDialog::getExistingDirectory(this, TXT("Папка для группы"));
+        if (dir.isEmpty())
+            return;
+        groups[g].tiles().append({Config::itemFromPath(dir), TileSize::Medium, false, {}});
+    }
+    else if (chosen == addLink)
+    {
+        Item link;
+        if (!askLink(link))
+            return;
+        groups[g].tiles().append({link, TileSize::Medium, false, {}});
+    }
+    else if (chosen == labels)
+    {
+        groups[g].labels = groupLabels ? 0 : 1;
+        for (Tile& tl : groups[g].tiles())
+            tl.label = -1;
+    }
+    else if (chosen->data().isValid())
+        groups[g].width = chosen->data().toInt();
     finish();
 }
 

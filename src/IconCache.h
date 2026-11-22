@@ -35,6 +35,7 @@ public:
     static QPixmap letterIcon(const QString& name, int px);
     static QString diskCacheDir();
     static void pruneExact();            // убрать старые готовые размеры (в фоне)
+    static void prefetch(const QStringList& sources); // заранее загрузить иконки у Windows в кэш на диске (в фоне)
     static inline bool s_persistExact = true; // false — пока окно тянут мышью: размеры не пишем на диск
     static QString faviconFile(const QString& url); // где лежит скачанная иконка сайта
     static void clearDiskCache();

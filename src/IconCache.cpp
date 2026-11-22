@@ -11,6 +11,7 @@
 #include <QImageReader>
 #include <windows.h>
 #include <urlmon.h>
+#include <atomic>
 #include <thread>
 #include <QUrl>
 #include <QRegularExpression>
@@ -170,14 +171,18 @@ void IconCache::work()
                 i = i.key().startsWith(prefix) ? m_done.erase(i) : std::next(i);
             continue;
         }
-        QImage img = WinShell::loadIcon(job.source, job.size).toImage();
-        if (!img.isNull())
+        QImage img;
+        if (!img.load(diskFile(job.source, job.size), "PNG")) // фоновая подгрузка могла уже положить файл
         {
-            QDir().mkpath(diskCacheDir());
-            img.save(diskFile(job.source, job.size), "PNG");
+            img = WinShell::loadIcon(job.source, job.size).toImage();
+            if (!img.isNull())
+            {
+                QDir().mkpath(diskCacheDir());
+                img.save(diskFile(job.source, job.size), "PNG");
+            }
+            else
+                img = letterIcon(job.name, job.size).toImage(); // запасную иконку на диск не пишем
         }
-        else
-            img = letterIcon(job.name, job.size).toImage(); // запасную иконку на диск не пишем
         m_sources.insert(job.source, img);
         // Готовые размеры этой иконки пересчитаем из нового исходника при следующей отрисовке.
         for (auto i = m_done.constBegin(); i != m_done.constEnd(); ++i)
@@ -496,6 +501,39 @@ void IconCache::pruneExact()
             QFile f(marker);
             f.open(QIODevice::WriteOnly);
         }
+    }).detach();
+}
+
+// Иконки приложений Windows отдаёт небыстро (десятки миллисекунд на каждую). Чтобы после закрепления или первого
+// запуска плитки не появлялись по одной с задержкой, грузим их заранее отдельным потоком — меню потом читает готовые
+// файлы с диска. Нужные размеры — те же, что запросит get(): 128 и 256 (исходники для 48–128 px плитки).
+void IconCache::prefetch(const QStringList& sources)
+{
+    static std::atomic<bool> busy{false};
+    if (sources.isEmpty() || busy.exchange(true))
+        return;
+    std::thread([sources] {
+        const HRESULT co = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        for (const QString& s : sources)
+        {
+            if (s.isEmpty() || Config::isWebLink(s) || s.startsWith(QStringLiteral("calc:")))
+                continue;
+            for (int need : {128, 256})
+            {
+                const QString file = diskFile(s, need);
+                if (QFile::exists(file))
+                    continue;
+                const QImage img = WinShell::loadIcon(s, need).toImage();
+                if (!img.isNull())
+                {
+                    QDir().mkpath(diskCacheDir());
+                    img.save(file, "PNG");
+                }
+            }
+        }
+        if (SUCCEEDED(co))
+            CoUninitialize();
+        busy = false;
     }).detach();
 }
 

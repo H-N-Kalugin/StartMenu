@@ -6,6 +6,7 @@
 #include <QWidget>
 
 #include "Config.h"
+#include "Theme.h"
 
 class IconCache;
 class QMenu;
@@ -27,6 +28,7 @@ public:
     void moveFocus(int dx, int dy);   // стрелки: выбор плитки с клавиатуры
     bool activateFocus();      // Enter по выбранной плитке
     static const char* itemMime();    // перетаскивание из «Всех приложений»
+    QRect tileViewRect(int g, int t) const { return toView(m_geo.value(g).tiles.value(t)); } // для самопроверки
 
 signals:
     void launched();
@@ -92,6 +94,9 @@ private:
     };
 
     void relayout();
+    // Свободные ярлыки не имеют ни заголовка, ни рамки-подложки: высота шапки и отступы у них нулевые
+    static int headerOf(const Group& g) { return g.loose ? 0 : Theme::GroupHeader; }
+    static int padOf(const Group& g) { return g.loose ? 0 : Theme::GroupPad; }
     void finish();                         // нормализовать, сохранить, перестроить
     void setScroll(int x, int y);
     QPoint toContent(const QPoint& view) const { return view + QPoint(m_scrollX, m_scrollY); }
@@ -130,6 +135,7 @@ private:
 
     void tileMenu(int g, int t, const QPoint& globalPos);
     void groupMenu(int g, const QPoint& globalPos);
+    void looseMenu(int g, const QPoint& globalPos);   // меню блока свободных ярлыков
     void emptyMenu(const QPoint& view, const QPoint& globalPos);
     void folderItemMenu(int child, const QPoint& globalPos);
     void launchItem(const Item& item, bool admin = false);

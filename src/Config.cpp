@@ -115,6 +115,7 @@ namespace
             g.joinPrev = go["joinPrev"].toBool();
             g.labels = go["labels"].toInt(-1);
             g.listMode = go["list"].toBool();
+            g.loose = go["loose"].toBool();
             // Вкладки; группа без "tabs" (ранний формат) — одна вкладка из title/tiles.
             const QJsonArray tabs = go.contains("tabs") ? go["tabs"].toArray() : QJsonArray{go};
             g.tabs.clear();
@@ -146,6 +147,8 @@ namespace
                 go["labels"] = g.labels;
             if (g.listMode)
                 go["list"] = true;
+            if (g.loose)
+                go["loose"] = true;
             arr.append(go);
         }
         return arr;
@@ -404,6 +407,15 @@ void Config::normalizeGroups(QList<Group>& groups)
             used.append(g.column);
         if (g.tabs.isEmpty())
             g.tabs.append(Tab{});
+        if (g.loose)
+        {
+            // Свободные ярлыки: одна «вкладка», без фона группы и без режима списка
+            g.clean = true;
+            g.listMode = false;
+            g.joinPrev = false;
+            while (g.tabs.size() > 1)
+                g.tabs.removeLast();
+        }
         g.activeTab = std::clamp(g.activeTab, 0, int(g.tabs.size()) - 1);
 
         for (Tab& tab : g.tabs)
@@ -423,6 +435,10 @@ void Config::normalizeGroups(QList<Group>& groups)
                 }
             }
     }
+    // Опустевший блок свободных ярлыков исчезает сам (как и обычная группа без плиток)
+    for (int i = int(groups.size()) - 1; i >= 0; --i)
+        if (groups[i].loose && groups[i].tiles().isEmpty())
+            groups.removeAt(i);
     // Номера колонок без дыр: 0, 1, 2…
     std::sort(used.begin(), used.end());
     for (Group& g : groups)
