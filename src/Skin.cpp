@@ -728,20 +728,22 @@ namespace
         // Нет обложки — нота: одна цельная векторная фигура (наклонная головка, ножка и флажок), без линий и кружков
         p.fillPath(clip, st.hoverBg);
         static const QPainterPath note = [] {
+            // Сетка 24×24. Головка — наклонный эллипс; ножка и флажок — один контур с плавной кривой.
             QPainterPath head;
-            head.addEllipse(QPointF(8.2, 17.4), 4.1, 3.3);
-            QTransform tilt;
-            tilt.translate(8.2, 17.4);
-            tilt.rotate(-22);
-            tilt.translate(-8.2, -17.4);
+            head.addEllipse(QRectF(-4.9, -3.5, 9.8, 7.0));
+            QTransform place;
+            place.translate(8.6, 18.0);
+            place.rotate(-24);
+            head = place.map(head);
             QPainterPath stem;
-            stem.addRoundedRect(QRectF(11.3, 3.2, 2.1, 14.4), 1.0, 1.0);
-            QPainterPath flag;
-            flag.moveTo(13.4, 3.2);
-            flag.cubicTo(15.4, 5.8, 19.4, 6.4, 19.4, 11.0);
-            flag.cubicTo(18.4, 8.8, 16.2, 8.5, 13.4, 8.2);
-            flag.closeSubpath();
-            return tilt.map(head).united(stem).united(flag);
+            stem.moveTo(11.1, 16.4);
+            stem.lineTo(11.1, 3.4);
+            stem.lineTo(13.2, 3.4);
+            stem.cubicTo(13.8, 7.4, 18.8, 8.0, 19.0, 13.2);
+            stem.cubicTo(17.2, 10.4, 15.0, 9.8, 13.2, 9.5);
+            stem.lineTo(13.2, 16.4);
+            stem.closeSubpath();
+            return head.united(stem);
         }();
         const QPointF c = QRectF(ar).center();
         const qreal u = ar.height() / 24.0 * 0.95;
@@ -749,7 +751,7 @@ namespace
         p.setRenderHint(QPainter::Antialiasing);
         p.translate(c);
         p.scale(u, u);
-        p.translate(-11.7, -12.0); // центр фигуры
+        p.translate(-11.3, -12.6); // центр фигуры
         p.fillPath(note, st.glyph);
         p.restore();
     }
