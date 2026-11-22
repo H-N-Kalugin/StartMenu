@@ -20,7 +20,7 @@
 - 🎵 **Music player** — compact in the search bar or a large panel above the menu with cover, seeking, waveform and beat glow.
 - 🌗 **Light and dark theme** for every style — or follow Windows automatically.
 - 💾 **Your layout is safe** — automatic daily backups (last 7), restore in one click, save/load the menu to a file.
-- 🔔 **Quiet updates** — the version number sits in the bottom-right corner; when a new one is out, a tiny pulsing dot appears above it. Click → *Update* or *Hide notification*. No pop-ups.
+- 🔔 **Quiet updates** — the version number sits in the bottom-right corner; when a new one is out, a pulsing dot with ripples appears next to it. Click → *Update* or *Hide notification*. No pop-ups.
 - ⏸️ **Pause** from the tray — `Win` opens the Windows menu again until you resume.
 - 🔊 **Volume & output device** in the menu; 📎 **clipboard history** and 📊 **system monitor** — optional, off by default.
 - 🌐 **Website links** with real site icons; 📌 **“Pin to StartMenu”** in Explorer.
