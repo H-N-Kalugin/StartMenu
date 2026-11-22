@@ -564,50 +564,73 @@ void Workspace::relayout()
         x += colW + Theme::GroupGapX;
     }
     {
-        // Столбец из одних свободных ярлыков встаёт по высоте между соседними группами: сверху, по центру или снизу
-        // относительно самого высокого столбца с группами.
-        int inTop = 0, inBottom = 0;
-        Skin::current().groupPanelInset(inTop, inBottom);
-        QHash<int, int> colBottom, colAlign;
+        // Столбец из одних свободных ярлыков встаёт по высоте на одну линию с ПЛИТКАМИ соседних групп (слева и справа):
+        // верх к верху, по центру или низ к низу — как будто ярлык лежит в такой же группе, только без неё.
         QSet<int> hasGroup;
-        int refTop = 1 << 30, refBottom = 0; // видимая высота соседних групп: от верха панели до её низа
+        for (int g = 0; g < n; ++g)
+            if (!groups[g].loose)
+                hasGroup.insert(m_visualCol[g]);
+        QSet<int> done;
         for (int g = 0; g < n; ++g)
         {
             const int col = m_visualCol[g];
-            colBottom[col] = qMax(colBottom.value(col, 0), m_geo[g].frame.bottom() + 1);
-            if (groups[g].loose)
-            {
-                if (!colAlign.contains(col))
-                    colAlign[col] = groups[g].alignV;
-            }
-            else
-            {
-                hasGroup.insert(col);
-                refTop = qMin(refTop, m_geo[g].frame.top() + inTop);
-                refBottom = qMax(refBottom, m_geo[g].frame.bottom() + 1 + inBottom);
-            }
-        }
-        if (refTop == (1 << 30))
-            refTop = 0;
-        for (int g = 0; g < n; ++g)
-        {
-            const int col = m_visualCol[g];
-            if (!groups[g].loose || hasGroup.contains(col))
+            if (!groups[g].loose || hasGroup.contains(col) || done.contains(col))
                 continue;
-            // Весь столбец свободных ярлыков (может быть несколько блоков друг под другом) двигаем одним куском
-            const int height = colBottom[col];
-            const int free = (refBottom - refTop) - height;
-            if (free <= 0)
+            done.insert(col);
+            // Плитки этого столбца
+            int ct = 1 << 30, cb = 0, align = groups[g].alignV;
+            for (int k = 0; k < n; ++k)
+                if (groups[k].loose && m_visualCol[k] == col)
+                    for (const QRect& r : m_geo[k].tiles)
+                    {
+                        ct = qMin(ct, r.top());
+                        cb = qMax(cb, r.bottom() + 1);
+                    }
+            if (cb == 0)
                 continue;
-            const int dy = refTop + int(free * (colAlign.value(col, 1) / 2.0));
-            if (dy <= 0)
+            // Плитки соседних столбцов; нет соседей с группами — все группы
+            auto tilesSpan = [&](bool onlyNeighbours, int& top, int& bottom) {
+                top = 1 << 30;
+                bottom = 0;
+                for (int k = 0; k < n; ++k)
+                {
+                    if (groups[k].loose)
+                        continue;
+                    if (onlyNeighbours && qAbs(m_visualCol[k] - col) != 1)
+                        continue;
+                    for (const QRect& r : m_geo[k].tiles)
+                    {
+                        top = qMin(top, r.top());
+                        bottom = qMax(bottom, r.bottom() + 1);
+                    }
+                }
+            };
+            int refTop, refBottom;
+            tilesSpan(true, refTop, refBottom);
+            if (refBottom == 0)
+                tilesSpan(false, refTop, refBottom);
+            if (refBottom == 0)
                 continue;
-            GroupGeo& geo = m_geo[g];
-            geo.frame.translate(0, dy);
-            geo.header.translate(0, dy);
-            geo.body.translate(0, dy);
-            for (QRect& r : geo.tiles)
-                r.translate(0, dy);
+            const int free = (refBottom - refTop) - (cb - ct);
+            int dy = refTop - ct + (free > 0 ? int(free * (align / 2.0)) : 0);
+            // Выше верха окна не уезжаем
+            int topMost = 1 << 30;
+            for (int k = 0; k < n; ++k)
+                if (groups[k].loose && m_visualCol[k] == col)
+                    topMost = qMin(topMost, m_geo[k].frame.top());
+            dy = qMax(dy, -topMost);
+            if (dy == 0)
+                continue;
+            for (int k = 0; k < n; ++k)
+                if (groups[k].loose && m_visualCol[k] == col)
+                {
+                    GroupGeo& geo = m_geo[k];
+                    geo.frame.translate(0, dy);
+                    geo.header.translate(0, dy);
+                    geo.body.translate(0, dy);
+                    for (QRect& r : geo.tiles)
+                        r.translate(0, dy);
+                }
         }
         for (int g = 0; g < n; ++g)
             maxBottom = qMax(maxBottom, m_geo[g].frame.bottom() + 1);
