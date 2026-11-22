@@ -1,0 +1,55 @@
+name: 🐞 Bug report / Ошибка
+description: Something doesn’t work as expected / Что-то работает не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! You can write in English or Russian.
+        Спасибо! Можно писать по-английски или по-русски.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / Что произошло?
+      description: Steps to reproduce, what you expected and what you got. / Шаги, что ожидали и что получилось.
+      placeholder: |
+        1. Press Win
+        2. Drag a tile onto another tile
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: StartMenu version / Версия StartMenu
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / Версия Windows
+      description: Run `winver` / Запустите `winver`
+      placeholder: "Windows 11 24H2 (26100.xxxx)"
+    validations:
+      required: true
+  - type: dropdown
+    id: style
+    attributes:
+      label: Style / Стиль
+      options: [Classic / Классический, Studio, Bento, Fluent]
+  - type: dropdown
+    id: ready
+    attributes:
+      label: “Keep the menu ready” / «Держать меню наготове»
+      options: ["On / Вкл", "Off / Выкл", "Don’t know / Не знаю"]
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots / Скриншоты
+      description: Drop images or a short video here. / Перетащите сюда картинки или короткое видео.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else? / Что-то ещё?
+      description: Other Start menu tools (Start11, StartAllBack…), multiple monitors, scaling, games… / Другие замены «Пуска», несколько мониторов, масштаб, игры…

@@ -1,0 +1,16 @@
+# Сборка и установщик (exe кладём в GitHub Releases, не в репозиторий)
+build/
+dist/
+out/
+*.user
+.vs/
+.idea/
+CMakeUserPresets.json
+
+# Локальные инструменты
+.tools/
+aqtinstall.log
+__pycache__/
+
+# Рабочие материалы (дизайн-концепции, исследования, статус) — не для публикации
+design/

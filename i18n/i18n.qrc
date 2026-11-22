@@ -1,0 +1,16 @@
+<RCC>
+  <qresource prefix="/i18n">
+    <file>de.json</file>
+    <file>en.json</file>
+    <file>es.json</file>
+    <file>fr.json</file>
+    <file>it.json</file>
+    <file>ja.json</file>
+    <file>keys.json</file>
+    <file>pl.json</file>
+    <file>pt.json</file>
+    <file>tr.json</file>
+    <file>uk.json</file>
+    <file>zh.json</file>
+  </qresource>
+</RCC>

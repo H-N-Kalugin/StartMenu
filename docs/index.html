@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StartMenu — Windows 10 tiles, back in Windows 11</title>
+<meta name="description" content="Free, open-source tile Start menu for Windows 11: groups, folders, 4 tile sizes, instant search, music player, clipboard history. No admin rights.">
+<meta property="og:title" content="StartMenu — the tile Start menu for Windows 11">
+<meta property="og:description" content="Groups, folders, instant search, music player. Free and open source.">
+<meta property="og:image" content="images/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="images/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f16; --bg2: #151722; --card: #1a1c28; --line: rgba(255,255,255,.08);
+    --text: #eef0fa; --muted: #a3a9c4; --blue: #4c8dff; --violet: #8a6bff; --orange: #ff7a50;
+    --grad: linear-gradient(135deg, var(--blue), var(--violet));
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Inter, "Segoe UI", system-ui, sans-serif; overflow-x: hidden; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  .glow { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .glow::before, .glow::after { content: ""; position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(120px); opacity: .45; }
+  .glow::before { background: var(--blue); top: -30vw; left: -20vw; }
+  .glow::after { background: var(--violet); top: -25vw; right: -25vw; }
+
+  nav { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(16px); background: rgba(14,15,22,.7); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; text-decoration: none; font-size: 18px; }
+  .brand img { width: 30px; height: 30px; }
+  nav .links { margin-left: auto; display: flex; gap: 20px; font-size: 14px; color: var(--muted); }
+  nav .links a { text-decoration: none; }
+  nav .links a:hover { color: var(--text); }
+
+  header { position: relative; padding: 88px 0 40px; text-align: center; }
+  header .wrap { position: relative; z-index: 1; }
+  .pill { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; color: var(--muted); background: rgba(255,255,255,.03); }
+  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.05; margin: 22px 0 18px; letter-spacing: -.03em; font-weight: 800; }
+  h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 680px; margin: 0 auto 32px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 26px; border-radius: 12px; font-weight: 700; text-decoration: none; border: 1px solid var(--line); background: rgba(255,255,255,.04); transition: transform .15s, box-shadow .15s; }
+  .btn.primary { background: var(--grad); border: 0; box-shadow: 0 10px 40px rgba(108,124,255,.35); }
+  .btn:hover { transform: translateY(-2px); }
+  .meta { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .hero-shot { margin: 56px auto 0; max-width: 1120px; position: relative; z-index: 1; }
+  .hero-shot img { width: 100%; border-radius: 18px; box-shadow: 0 40px 120px rgba(0,0,0,.6); border: 1px solid var(--line); display: block; }
+
+  section { padding: 88px 0; }
+  h2 { font-size: clamp(28px, 4vw, 42px); letter-spacing: -.02em; margin: 0 0 12px; text-align: center; }
+  .sub { color: var(--muted); text-align: center; max-width: 620px; margin: 0 auto 48px; }
+
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+  .card .ic { font-size: 28px; }
+  .card h3 { margin: 10px 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 20px; }
+  .style img { width: 100%; border-radius: 14px; border: 1px solid var(--line); display: block; }
+  .style b { display: block; margin-top: 12px; font-size: 17px; }
+  .style span { color: var(--muted); font-size: 14px; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px 32px; list-style: none; padding: 0; margin: 0; }
+  .features li { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .features li i { font-style: normal; font-size: 22px; }
+  .features li div { color: var(--muted); font-size: 15px; }
+  .features li strong { color: var(--text); display: block; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; counter-reset: s; }
+  .steps .card { position: relative; padding-top: 56px; }
+  .steps .card::before { counter-increment: s; content: counter(s); position: absolute; top: 18px; left: 24px; width: 28px; height: 28px; border-radius: 8px; background: var(--grad); display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+  kbd { font-family: inherit; font-size: 13px; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--text); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; text-align: center; }
+  .stats .num { font-size: 40px; font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stats .lbl { color: var(--muted); font-size: 14px; }
+
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+  .faq { max-width: 760px; margin: 0 auto; }
+
+  .final { text-align: center; position: relative; overflow: hidden; }
+  .final .box { background: linear-gradient(135deg, rgba(76,141,255,.18), rgba(138,107,255,.18)); border: 1px solid var(--line); border-radius: 24px; padding: 56px 24px; }
+  footer { padding: 32px 0 48px; color: var(--muted); font-size: 13px; text-align: center; border-top: 1px solid var(--line); }
+  footer a { color: var(--muted); }
+  @media (max-width: 640px) { nav .links a.hide-sm { display: none; } header { padding-top: 56px; } section { padding: 64px 0; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#"><img src="images/logo.png" alt="">StartMenu</a>
+    <div class="links">
+      <a class="hide-sm" href="#styles">Styles</a>
+      <a class="hide-sm" href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/NKF-XXX/StartMenu">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="glow"></div>
+  <div class="wrap">
+    <span class="pill">Free forever · No ads · Open source</span>
+    <h1>Your Windows 10 tiles,<br><span>back in Windows 11</span></h1>
+    <p class="lead">Groups, folders and four tile sizes in a Start menu you arrange yourself. A standalone app that doesn’t patch Windows, needs no admin rights and uninstalls in one click.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/NKF-XXX/StartMenu/releases/latest">⬇ Download for Windows 11</a>
+      <a class="btn" href="https://github.com/NKF-XXX/StartMenu">★ Star on GitHub</a>
+    </div>
+    <p class="meta">~11 MB installer · no admin rights · 12 languages · <a href="https://github.com/NKF-XXX/StartMenu/blob/main/README.ru.md">по-русски</a></p>
+  </div>
+  <div class="wrap hero-shot"><img src="images/hero.png" alt="StartMenu on Windows 11"></div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Why StartMenu</h2>
+    <p class="sub">A Start menu you arrange yourself — fast, light and respectful of your PC.</p>
+    <div class="why">
+      <div class="card"><div class="ic">⚡</div><h3>Instant</h3><p>Opens in ~0.1 s, or ~0.02 s with “Keep the menu ready”.</p></div>
+      <div class="card"><div class="ic">🪶</div><h3>Light</h3><p>~6 MB in the tray. The menu runs only while it’s open.</p></div>
+      <div class="card"><div class="ic">🧱</div><h3>Windows 10 tiles</h3><p>Groups, folders, 4 tile sizes, custom pictures — only prettier.</p></div>
+      <div class="card"><div class="ic">🛡️</div><h3>Doesn’t break Windows</h3><p>No patches to Explorer or system files, no admin rights, clean one-click uninstall.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="styles" style="background: var(--bg2)">
+  <div class="wrap">
+    <h2>Four styles, endlessly tunable</h2>
+    <p class="sub">Glass, blur, colors, corners, labels, cell size, animation — make it yours.</p>
+    <div class="styles">
+      <div class="style"><img src="images/style-classic.png" alt="Classic style" loading="lazy"><b>Classic</b><span>Calm and familiar</span></div>
+      <div class="style"><img src="images/style-studio.png" alt="Studio style" loading="lazy"><b>Studio</b><span>Graphite, grid and a single accent</span></div>
+      <div class="style"><img src="images/style-bento.png" alt="Bento style" loading="lazy"><b>Bento</b><span>Card islands with a soft glow of icon colors</span></div>
+      <div class="style"><img src="images/style-fluent.png" alt="Fluent style" loading="lazy"><b>Fluent</b><span>Glass and soft shapes in the spirit of Windows 11</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Everything at your fingertips</h2>
+    <p class="sub">Press <kbd>Win</kbd> and just start typing.</p>
+    <ul class="features">
+      <li><i>🧱</i><div><strong>Tiles in groups</strong>4 sizes, folders, tabs, list groups, icon-color fill.</div></li>
+      <li><i>📑</i><div><strong>Layers</strong>Extra pages of tiles — <kbd>Ctrl</kbd>+<kbd>1…9</kbd> or the wheel.</div></li>
+      <li><i>🔎</i><div><strong>Smart search</strong>Apps, Settings, files, web, calculator; fixes the wrong keyboard layout.</div></li>
+      <li><i>🎵</i><div><strong>Music player</strong>Cover art, seeking, waveform and a glow that pulses to the beat.</div></li>
+      <li><i>📎</i><div><strong>Clipboard history</strong>Click to paste. Passwords from password managers are never stored.</div></li>
+      <li><i>🔊</i><div><strong>Volume &amp; output</strong>Switch the audio device right from the menu.</div></li>
+      <li><i>📊</i><div><strong>System monitor</strong>CPU, RAM, GPU and disk — quietly, in the status bar.</div></li>
+      <li><i>🌐</i><div><strong>Website links</strong>With real site icons, opened in the browser you choose.</div></li>
+      <li><i>📌</i><div><strong>Pin from Explorer</strong>“Pin to StartMenu” in the context menu.</div></li>
+      <li><i>🎮</i><div><strong>Works over games</strong>The taskbar comes up together with the menu.</div></li>
+      <li><i>🧙</i><div><strong>First-run wizard</strong>Live style previews and import of your Windows pins.</div></li>
+      <li><i>🌍</i><div><strong>12 languages</strong>Follows Windows automatically.</div></li>
+    </ul>
+  </div>
+</section>
+
+<section style="background: var(--bg2)">
+  <div class="wrap stats">
+    <div><div class="num">~6 MB</div><div class="lbl">tray process in idle</div></div>
+    <div><div class="num">0.02 s</div><div class="lbl">to open, when kept ready</div></div>
+    <div><div class="num">4</div><div class="lbl">styles</div></div>
+    <div><div class="num">12</div><div class="lbl">languages</div></div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install in one minute</h2>
+    <p class="sub">No administrator rights. Installs for your user only and removes cleanly.</p>
+    <div class="steps">
+      <div class="card"><h3>Download</h3><p>Get <b>StartMenu-x.y.z.exe</b> (~11 MB) from <a href="https://github.com/NKF-XXX/StartMenu/releases/latest">Releases</a>.</p></div>
+      <div class="card"><h3>Run</h3><p>SmartScreen may warn about an unsigned app: <b>More info → Run anyway</b>.</p></div>
+      <div class="card"><h3>Pick a style</h3><p>The wizard shows live previews. Then press <kbd>Win</kbd> — done.</p></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top: 0">
+  <div class="wrap faq">
+    <h2>FAQ</h2>
+    <p class="sub"></p>
+    <details><summary>How do I open the original Windows Start menu?</summary><p>Press <kbd>Ctrl</kbd>+<kbd>Esc</kbd>. All <kbd>Win</kbd>+… shortcuts keep working.</p></details>
+    <details><summary>How do I uninstall it?</summary><p>Settings → Apps → Installed apps → StartMenu → Uninstall. The Windows Start menu comes back immediately.</p></details>
+    <details><summary>How much memory does it use?</summary><p>About 6 MB in the tray. With “Keep the menu ready” — ~12–25 MB, and it opens instantly.</p></details>
+    <details><summary>Is it safe?</summary><p>It needs no admin rights and doesn’t touch system files. The code is open — you can build it yourself.</p></details>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div class="box">
+      <h2>Make Start yours again</h2>
+      <p class="sub" style="margin-bottom: 28px">Free and open source. Forever.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/NKF-XXX/StartMenu/releases/latest">⬇ Download StartMenu</a>
+        <a class="btn" href="https://github.com/NKF-XXX/StartMenu/issues/new/choose">Suggest an idea</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    StartMenu · <a href="https://github.com/NKF-XXX/StartMenu/blob/main/LICENSE">GPL-3.0 License</a> · <a href="https://github.com/NKF-XXX/StartMenu">Source on GitHub</a><br>
+    Not affiliated with Microsoft. Windows is a trademark of Microsoft Corporation.
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+name: 💡 Idea / Идея
+description: Suggest a feature or an improvement / Предложить функцию или улучшение
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would it solve? / Какую задачу это решит?
+      description: Describe the situation, not only the solution. / Опишите ситуацию, а не только решение.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea / Ваша идея
+      description: How should it work? Mockups and screenshots are welcome. / Как это должно работать? Наброски и скриншоты приветствуются.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / Альтернативы
+      description: How do you solve it today? Seen it elsewhere? / Как решаете сейчас? Видели где-то ещё?
