@@ -116,7 +116,8 @@ namespace
             g.labels = go["labels"].toInt(-1);
             g.listMode = go["list"].toBool();
             g.loose = go["loose"].toBool();
-            g.alignH = std::clamp(go["alignH"].toInt(1), 0, 2);
+            g.indentL = std::clamp(go["indentL"].toInt(0), 0, 24);
+            g.indentR = std::clamp(go["indentR"].toInt(0), 0, 24);
             g.alignV = std::clamp(go["alignV"].toInt(1), 0, 2);
             // Вкладки; группа без "tabs" (ранний формат) — одна вкладка из title/tiles.
             const QJsonArray tabs = go.contains("tabs") ? go["tabs"].toArray() : QJsonArray{go};
@@ -152,7 +153,8 @@ namespace
             if (g.loose)
             {
                 go["loose"] = true;
-                go["alignH"] = g.alignH;
+                go["indentL"] = g.indentL;
+                go["indentR"] = g.indentR;
                 go["alignV"] = g.alignV;
             }
             arr.append(go);

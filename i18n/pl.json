@@ -437,5 +437,12 @@
 "435": "Instaluj aktualizacje automatycznie (raz dziennie, nie podczas gry)",
 "436": "Gdy pojawi się nowa wersja, program sam ją pobierze i zainstaluje; menu uruchomi się ponownie na kilka sekund. Nie robi tego podczas gry na pełnym ekranie ani prezentacji.",
 "437": "Pokazuj „Co nowego” po aktualizacji",
-"438": "Nie pokazuj więcej „Co nowego”"
+"438": "Nie pokazuj więcej „Co nowego”",
+"439": "Wersja %1",
+"440": "Powiadamiaj o nowych wersjach",
+"441": "Instaluj automatycznie",
+"442": "Pokazuj „Co nowego”",
+"443": "Brak",
+"444": "Odstęp z lewej, w kafelkach",
+"445": "Odstęp z prawej, w kafelkach"
 }

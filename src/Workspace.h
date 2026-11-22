@@ -96,8 +96,10 @@ private:
     void relayout();
     // Свободные ярлыки не имеют ни заголовка, ни рамки-подложки: высота шапки и отступы у них нулевые
     // Небольшой запас вокруг — чтобы уголки подсветки наведения у плиток не обрезались краем окна и соседями
+    // По бокам отступ как у групп — плитки блока стоят ровно под плитками групп своей колонки; сверху и снизу — запас в 8 px.
     static int headerOf(const Group& g) { return g.loose ? 8 : Theme::GroupHeader; }
-    static int padOf(const Group& g) { return g.loose ? 8 : Theme::GroupPad; }
+    static int padOf(const Group&) { return Theme::GroupPad; }
+    static int padBottomOf(const Group& g) { return g.loose ? 8 : Theme::GroupPad; }
     void finish();                         // нормализовать, сохранить, перестроить
     void setScroll(int x, int y);
     QPoint toContent(const QPoint& view) const { return view + QPoint(m_scrollX, m_scrollY); }

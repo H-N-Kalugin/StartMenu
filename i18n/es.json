@@ -437,5 +437,12 @@
 "435": "Instalar actualizaciones automáticamente (una vez al día, no durante un juego)",
 "436": "Si sale una versión nueva, el programa la descarga e instala solo; el menú se reinicia un par de segundos. No lo hace con un juego a pantalla completa ni en una presentación.",
 "437": "Mostrar «Novedades» tras una actualización",
-"438": "No volver a mostrar «Novedades»"
+"438": "No volver a mostrar «Novedades»",
+"439": "Versión %1",
+"440": "Avisar de versiones nuevas",
+"441": "Instalar automáticamente",
+"442": "Mostrar «Novedades»",
+"443": "Ninguno",
+"444": "Sangría izquierda, en mosaicos",
+"445": "Sangría derecha, en mosaicos"
 }

@@ -363,6 +363,22 @@ void Workspace::relayout()
         rows[g] = qMax(r, groups[g].listMode ? 1 : 2); // пустая группа всё равно занимает место под одну среднюю плитку
     }
 
+    // Ширина группы в ячейках. У обычной — как задана; у блока свободных ярлыков — ровно по его плиткам плюс отступы слева и
+    // справа (раньше блок занимал всю заданную ширину, и плитки «плавали» внутри пустого места).
+    QList<int> effW(n);
+    for (int g = 0; g < n; ++g)
+    {
+        if (!groups[g].loose)
+        {
+            effW[g] = groups[g].width;
+            continue;
+        }
+        int used = 0;
+        for (const QRect& cr : packed[g])
+            used = qMax(used, cr.x() + cr.width());
+        effW[g] = qMax(1, used) + groups[g].indentL + groups[g].indentR;
+    }
+
     // 2. Колонки — как сохранено.
     const bool wasReflowed = m_reflowed;
     m_visualCol = QList<int>(n);
@@ -400,8 +416,8 @@ void Workspace::relayout()
                 double ra = 0, rb = (row.size() - 1) * double(Theme::GroupGapX);
                 for (int g : row)
                 {
-                    ra += groups[g].width;
-                    rb += groups[g].width * gap - gap + 2 * padOf(groups[g]);
+                    ra += effW[g];
+                    rb += effW[g] * gap - gap + 2 * padOf(groups[g]);
                 }
                 if (ra * 46 + rb > ba * 46 + bb)
                 {
@@ -428,7 +444,7 @@ void Workspace::relayout()
                 {
                     maxRows = qMax(maxRows, groups[g].listMode ? qMin(rows[g], 2) : rows[g]);
                     hdr = qMax(hdr, headerOf(groups[g]));
-                    pad = qMax(pad, padOf(groups[g]));
+                    pad = qMax(pad, padBottomOf(groups[g]));
                 }
                 a += maxRows;
                 b += hdr + maxRows * gap - gap + pad;
@@ -529,24 +545,16 @@ void Workspace::relayout()
                 const int gi = row[i];
                 m_rowStart[gi] = (i == 0);
                 const Group& g = groups[gi];
-                const int bodyW = cellsPx(g.width);
+                const int bodyW = cellsPx(effW[gi]);
                 const int bodyH = cellsPx(rows[gi]);
                 GroupGeo& geo = m_geo[gi];
                 const int hdr = headerOf(g), pad = padOf(g);
-                geo.frame = QRect(rx, y, bodyW + 2 * pad, hdr + bodyH + pad);
+                geo.frame = QRect(rx, y, bodyW + 2 * pad, hdr + bodyH + padBottomOf(g));
                 geo.header = QRect(rx, y, geo.frame.width(), hdr);
                 geo.body = QRect(rx + pad, y + hdr, bodyW, bodyH);
                 geo.tiles.clear();
-                // Свободные ярлыки: весь набор плиток прижат влево / по центру / вправо внутри блока
-                int shiftX = 0;
-                if (g.loose && !packed[gi].isEmpty())
-                {
-                    int usedCells = 0;
-                    for (const QRect& cr : packed[gi])
-                        usedCells = qMax(usedCells, cr.x() + cr.width());
-                    shiftX = int((bodyW - cellsPx(usedCells)) * (g.alignH / 2.0));
-                    shiftX = qMax(0, shiftX);
-                }
+                // Свободные ярлыки: отступ слева сдвигает плитки (в ячейках сетки — ровно как плитки в группах)
+                const int shiftX = g.loose ? g.indentL * (Theme::Cell + Theme::CellGap) : 0;
                 for (const QRect& cr : packed[gi])
                     geo.tiles.append(QRect(geo.body.x() + shiftX + cr.x() * (Theme::Cell + Theme::CellGap),
                                            geo.body.y() + cr.y() * (Theme::Cell + Theme::CellGap),
@@ -787,7 +795,7 @@ Workspace::HitInfo Workspace::hitTest(const QPoint& view) const
     for (int g = 0; g < groups.size(); ++g)
     {
         const GroupGeo& geo = m_geo[g];
-        if (gripRect(g).contains(cp))
+        if (!groups[g].loose && gripRect(g).contains(cp))
             return {Hit::Grip, g, -1};
         if (!geo.frame.contains(cp))
             continue;
@@ -2108,19 +2116,24 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
         a->setChecked(group.width == w.first);
         a->setData(w.first);
     }
-    // Выравнивание: по горизонтали внутри блока и по вертикали между соседними группами
+    // Отступы слева и справа — в долях обычной плитки (2 ячейки сетки = одна плитка)
+    static const int kIndents[] = {0, 1, 2, 3, 4, 6, 8};
+    static const char* kIndentNames[] = {nullptr, "\u00bd", "1", "1\u00bd", "2", "3", "4"};
+    auto addIndentMenu = [&](const QString& title, int base, int current) {
+        QMenu* m = menu.addMenu(title);
+        for (int k = 0; k < 7; ++k)
+        {
+            QAction* a = m->addAction(k == 0 ? TXT("Нет") : QString::fromUtf8(kIndentNames[k]));
+            a->setCheckable(true);
+            a->setChecked(current == kIndents[k]);
+            a->setData(base + k);
+        }
+    };
+    addIndentMenu(TXT("Отступ слева, в плитках"), 300, group.indentL);
+    addIndentMenu(TXT("Отступ справа, в плитках"), 400, group.indentR);
+    // По вертикали — относительно плиток соседних групп
     QMenu* alignMenu = menu.addMenu(TXT("Выравнивание"));
-    const QStringList hNames{TXT("Слева"), TXT("По центру"), TXT("Справа")};
     const QStringList vNames{TXT("Сверху"), TXT("По центру"), TXT("Снизу")};
-    alignMenu->addSection(TXT("По горизонтали"));
-    for (int k = 0; k < 3; ++k)
-    {
-        QAction* a = alignMenu->addAction(hNames[k]);
-        a->setCheckable(true);
-        a->setChecked(group.alignH == k);
-        a->setData(100 + k);
-    }
-    alignMenu->addSection(TXT("По вертикали"));
     for (int k = 0; k < 3; ++k)
     {
         QAction* a = alignMenu->addAction(vNames[k]);
@@ -2135,13 +2148,15 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
     if (!chosen)
         return;
     auto& groups = Config::instance().groups();
-    if (chosen->data().isValid() && chosen->data().toInt() >= 100)
+    if (chosen->data().isValid() && chosen->data().toInt() >= 200)
     {
         const int code = chosen->data().toInt();
-        if (code < 200)
-            groups[g].alignH = code - 100;
-        else
+        if (code < 300)
             groups[g].alignV = code - 200;
+        else if (code < 400)
+            groups[g].indentL = kIndents[code - 300];
+        else
+            groups[g].indentR = kIndents[code - 400];
     }
     else if (chosen == toGroup)
     {

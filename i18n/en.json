@@ -437,5 +437,12 @@
 "435": "Install updates automatically (once a day, not during a game)",
 "436": "When a new version is out, the program downloads and installs it by itself; the menu restarts for a couple of seconds. It won't do this while you're in a fullscreen game or a presentation.",
 "437": "Show “What's new” after an update",
-"438": "Don't show “What's new” again"
+"438": "Don't show “What's new” again",
+"439": "Version %1",
+"440": "Notify about new versions",
+"441": "Install automatically",
+"442": "Show “What's new”",
+"443": "None",
+"444": "Left indent, in tiles",
+"445": "Right indent, in tiles"
 }

@@ -437,5 +437,12 @@
 "435": "Updates automatisch installieren (einmal täglich, nicht während eines Spiels)",
 "436": "Wenn eine neue Version erscheint, lädt das Programm sie selbst herunter und installiert sie; das Menü startet für ein paar Sekunden neu. Im Vollbildspiel oder in einer Präsentation geschieht das nicht.",
 "437": "Nach einem Update „Neuigkeiten“ anzeigen",
-"438": "„Neuigkeiten“ nicht mehr anzeigen"
+"438": "„Neuigkeiten“ nicht mehr anzeigen",
+"439": "Version %1",
+"440": "Über neue Versionen informieren",
+"441": "Automatisch installieren",
+"442": "„Neuigkeiten“ anzeigen",
+"443": "Kein",
+"444": "Linker Abstand, in Kacheln",
+"445": "Rechter Abstand, in Kacheln"
 }

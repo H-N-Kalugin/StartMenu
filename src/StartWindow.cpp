@@ -453,20 +453,48 @@ void StartWindow::refreshUpdate()
         m_pulseTimer->stop();
 }
 
+// Маленькое меню по номеру версии (всегда доступно): что нового, обновить, проверить и все переключатели про обновления.
 void StartWindow::updateMenu()
 {
     const auto info = Updater::available();
-    if (!info)
-        return;
     setBusy(true);
     QMenu menu(this);
-    QAction* upd = menu.addAction(TXT("Обновить до версии %1").arg(info->version));
-    QAction* hide = m_updateNew ? menu.addAction(TXT("Скрыть уведомление")) : nullptr;
+    QAction* title = menu.addAction(TXT("Версия %1").arg(Updater::currentVersion()));
+    title->setEnabled(false);
+    QAction* upd = info ? menu.addAction(TXT("Обновить до версии %1").arg(info->version)) : nullptr;
+    QAction* hide = (info && m_updateNew) ? menu.addAction(TXT("Скрыть уведомление")) : nullptr;
+    QAction* check = menu.addAction(TXT("Проверить сейчас"));
+    menu.addSeparator();
+    // Переключатели: каждый сразу сохраняется
+    Settings& st = Settings::get();
+    auto toggle = [&](const QString& text, bool on, bool enabled = true) {
+        QAction* a = menu.addAction(text);
+        a->setCheckable(true);
+        a->setChecked(on);
+        a->setEnabled(enabled);
+        return a;
+    };
+    QAction* notify = toggle(TXT("Уведомлять о новых версиях"), st.checkUpdates);
+    QAction* autoInst = toggle(TXT("Устанавливать автоматически"), st.autoUpdate, st.checkUpdates);
+    QAction* whatsNew = toggle(TXT("Показывать «Что нового»"), st.showWhatsNew);
     const QRect r = updateRect();
     const QSize sz = menu.sizeHint();
     QAction* chosen = menu.exec(mapToGlobal(QPoint(r.right() - sz.width(), r.top() - sz.height() - 4)));
     setBusy(false);
-    if (chosen == upd)
+    if (!chosen)
+        return;
+    auto saveSettings = [this] {
+        Settings::get().save();
+        refreshUpdate();
+        // Трей перечитает настройки (значок, автоустановка)
+        if (HANDLE ev = OpenEventW(EVENT_MODIFY_STATE, FALSE, L"Local\\StartMenu.App.HostReload"))
+        {
+            SetEvent(ev);
+            CloseHandle(ev);
+        }
+        update();
+    };
+    if (chosen == upd && info)
     {
         m_updateBusy = true;
         update();
@@ -477,23 +505,41 @@ void StartWindow::updateMenu()
     }
     else if (hide && chosen == hide)
     {
-        Settings::get().hiddenUpdate = info->version;
-        Settings::get().save();
-        refreshUpdate();
-        // Трей уберёт точку со значка
-        if (HANDLE ev = OpenEventW(EVENT_MODIFY_STATE, FALSE, L"Local\\StartMenu.App.HostReload"))
-        {
-            SetEvent(ev);
-            CloseHandle(ev);
-        }
-        update();
+        st.hiddenUpdate = info->version;
+        saveSettings();
+    }
+    else if (chosen == check)
+    {
+        QPointer<StartWindow> self(this);
+        Updater::check(true, [self](bool) {
+            if (self)
+            {
+                self->refreshUpdate();
+                self->update();
+            }
+        });
+    }
+    else if (chosen == notify)
+    {
+        st.checkUpdates = notify->isChecked();
+        saveSettings();
+    }
+    else if (chosen == autoInst)
+    {
+        st.autoUpdate = autoInst->isChecked();
+        saveSettings();
+    }
+    else if (chosen == whatsNew)
+    {
+        st.showWhatsNew = whatsNew->isChecked();
+        saveSettings();
     }
 }
 
 void StartWindow::mouseMoveEvent(QMouseEvent* e)
 {
     {
-        const bool over = Updater::available().has_value() && updateRect().contains(e->position().toPoint());
+        const bool over = updateRect().contains(e->position().toPoint()); // номер версии нажимается всегда
         if (over != m_updateHover)
         {
             m_updateHover = over;
@@ -1288,7 +1334,7 @@ void StartWindow::startSearchCaret()
 
 void StartWindow::mousePressEvent(QMouseEvent* e)
 {
-    if (e->button() == Qt::LeftButton && !m_updateBusy && Updater::available() && updateRect().contains(e->position().toPoint()))
+    if (e->button() == Qt::LeftButton && !m_updateBusy && updateRect().contains(e->position().toPoint()))
     {
         updateMenu();
         return;
