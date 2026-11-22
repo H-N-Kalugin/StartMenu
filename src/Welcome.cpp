@@ -1,4 +1,5 @@
 #include "Welcome.h"
+#include "Updater.h"
 #include "Lang.h"
 #include "Glyphs.h"
 #include "PinSync.h"
@@ -741,6 +742,7 @@ void WelcomeWindow::finish(bool openMenu)
     }
     s.tileFill = m_fill->isChecked() ? 1 : 0;
     s.clipboardHistory = m_clipboard && m_clipboard->isChecked();
+    s.lastSeenVersion = Updater::currentVersion(); // свежая установка: карточку «Что нового» не показываем
     s.save();
     s.apply();
 

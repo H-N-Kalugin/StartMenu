@@ -124,6 +124,7 @@ void Settings::load()
     showHints = o["showHints"].toBool(showHints);
     checkUpdates = o["checkUpdates"].toBool(checkUpdates);
     hiddenUpdate = o["hiddenUpdate"].toString();
+    lastSeenVersion = o["lastSeenVersion"].toString();
     apply();
 }
 
@@ -158,6 +159,7 @@ void Settings::save() const
     o["theme"] = theme;
     o["checkUpdates"] = checkUpdates;
     o["hiddenUpdate"] = hiddenUpdate;
+    o["lastSeenVersion"] = lastSeenVersion;
     const FileLock lock;
     keepBackup(filePath());
     QSaveFile f(filePath());

@@ -108,6 +108,8 @@ private:
     QTimer* m_pulseTimer = nullptr;
     QElapsedTimer m_pulseClock;      // время с начала пульсации — фаза не «прыгает», если кадр запоздал
     QRect updateRect() const;        // номер версии (+ кружок)
+    class WhatsNewCard* m_whatsNew = nullptr;  // «Что нового» после обновления
+    void maybeShowWhatsNew(bool force = false);
     void refreshUpdate();
     void updateMenu();
     int m_layerHover = -1;     // индекс слоя, -2 — «+»

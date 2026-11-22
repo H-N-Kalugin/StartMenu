@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(StartMenu VERSION 1.0.3 LANGUAGES CXX RC)
+project(StartMenu VERSION 1.0.4 LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,6 +42,7 @@ add_executable(StartMenu WIN32
     src/Demo.h          src/Demo.cpp           # --render --demo: выдуманные данные для снимков
     src/Backups.h       src/Backups.cpp        # резервные копии меню
     src/Updater.h       src/Updater.cpp        # проверка обновлений на GitHub
+    src/WhatsNew.h      src/WhatsNew.cpp       # карточка «Что нового» после обновления
 )
 
 target_link_libraries(StartMenu PRIVATE Qt6::Widgets)

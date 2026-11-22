@@ -17,6 +17,7 @@
 #include "Sidebar.h"
 #include "Theme.h"
 #include "Updater.h"
+#include "WhatsNew.h"
 #include "Workspace.h"
 
 #include <QApplication>
@@ -383,6 +384,40 @@ QRect StartWindow::updateRect() const
     return QRect(width() - Theme::ContentMargin - w, height() - 22, w, 18);
 }
 
+// После обновления программы при первом открытии меню — небольшая карточка с тем, что изменилось.
+void StartWindow::maybeShowWhatsNew(bool force)
+{
+    const QString cur = Updater::currentVersion();
+    if (!force && Settings::get().lastSeenVersion == cur)
+        return;
+    const QStringList bullets = WhatsNew::bulletsFor(cur);
+    if (bullets.isEmpty())
+    {
+        // Для этой версии показывать нечего — просто запоминаем, чтобы не проверять каждый раз
+        if (!force)
+        {
+            Settings::get().lastSeenVersion = cur;
+            Settings::get().save();
+        }
+        return;
+    }
+    if (!m_whatsNew)
+    {
+        m_whatsNew = new WhatsNewCard(this);
+        connect(m_whatsNew, &WhatsNewCard::dismissed, this, [this, force] {
+            if (!force)
+            {
+                Settings::get().lastSeenVersion = Updater::currentVersion();
+                Settings::get().save();
+            }
+        });
+    }
+    m_whatsNew->setContent(cur, bullets);
+    m_whatsNew->placeIn(m_workspace->geometry());
+    m_whatsNew->show();
+    m_whatsNew->raise();
+}
+
 void StartWindow::refreshUpdate()
 {
     const auto upd = Updater::visible();
@@ -548,6 +583,8 @@ void StartWindow::startStats()
 void StartWindow::prepareRender(bool clipboard)
 {
     refreshUpdate();
+    if (qEnvironmentVariableIsSet("STARTMENU_WHATSNEW"))
+        maybeShowWhatsNew(true); // для снимков: показать карточку «Что нового»
     if (clipboard)
         setView(View::Clipboard);
     if (Settings::get().systemMonitor)
@@ -672,6 +709,7 @@ void StartWindow::showEvent(QShowEvent* e)
     layoutChildren();
     m_sidebar->setClipboardDot(Settings::get().clipboardHistory && ClipboardStore::hasUnseen());
     refreshUpdate();
+    maybeShowWhatsNew();
     startStats();
 }
 
@@ -904,6 +942,8 @@ void StartWindow::resizeEvent(QResizeEvent*)
 
 void StartWindow::layoutChildren()
 {
+    if (m_whatsNew && m_whatsNew->isVisible())
+        m_whatsNew->placeIn(m_workspace->geometry());
     m_sidebar->setGeometry(0, 0, Theme::SidebarWidth, height());
     const int left = Theme::SidebarWidth + 10;
     const int contentW = width() - left - Theme::ContentMargin;
