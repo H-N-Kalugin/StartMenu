@@ -152,6 +152,7 @@ namespace
 
         int searchFieldHeight() const override { return 32; }
         int titleOffset() const override { return QFontMetrics(font(Font::Meta)).horizontalAdvance(QStringLiteral("00")) + 8; }
+        void groupPanelInset(int& top, int& bottom) const override { top = 6; bottom = 8; } // панель «с фоном» выступает в желоб
 
         QColor t2() const { return text(0.68); }
         QColor t3() const { return text(0.55); } // ≈ #8B9099 на графите — контраст ≥ 4.5:1

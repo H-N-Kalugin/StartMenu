@@ -126,7 +126,7 @@ void check(bool force, std::function<void(bool)> done)
     static std::atomic<qint64> checkedAt{-1};
     static std::atomic<bool> running{false};
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    constexpr qint64 kEvery = 2 * 3600;
+    constexpr qint64 kEvery = 30 * 60;
     if (!force)
     {
         const qint64 mem = checkedAt.load();

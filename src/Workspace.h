@@ -95,8 +95,9 @@ private:
 
     void relayout();
     // Свободные ярлыки не имеют ни заголовка, ни рамки-подложки: высота шапки и отступы у них нулевые
-    static int headerOf(const Group& g) { return g.loose ? 0 : Theme::GroupHeader; }
-    static int padOf(const Group& g) { return g.loose ? 0 : Theme::GroupPad; }
+    // Небольшой запас вокруг — чтобы уголки подсветки наведения у плиток не обрезались краем окна и соседями
+    static int headerOf(const Group& g) { return g.loose ? 8 : Theme::GroupHeader; }
+    static int padOf(const Group& g) { return g.loose ? 8 : Theme::GroupPad; }
     void finish();                         // нормализовать, сохранить, перестроить
     void setScroll(int x, int y);
     QPoint toContent(const QPoint& view) const { return view + QPoint(m_scrollX, m_scrollY); }

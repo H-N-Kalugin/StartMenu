@@ -512,7 +512,7 @@ namespace
                 Updater::check(false, [&refreshUpdateBadge](bool) { refreshUpdateBadge(); });
         };
         QObject::connect(&updateTimer, &QTimer::timeout, &app, checkUpdates);
-        updateTimer.start(1 * 3600 * 1000); // раз в час спрашиваем; сама проверка пропускается, если недавно была
+        updateTimer.start(30 * 60 * 1000); // раз в 30 минут спрашиваем; сама проверка пропускается, если недавно была
         QTimer::singleShot(60 * 1000, &app, checkUpdates);
         QTimer::singleShot(1000, &app, refreshUpdateBadge); // ответ предыдущей проверки уже сохранён на диске
 

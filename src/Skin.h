@@ -116,6 +116,9 @@ public:
     virtual QFont font(Font role) const;
     virtual int searchFieldHeight() const { return 36; }
     virtual int titleOffset() const { return 0; } // отступ названия группы слева (Studio: место под номер)
+    // Панель группы нарисована не точно по рамке: сверху на top пикселей ниже её края, снизу на bottom пикселей дальше.
+    // Нужно, чтобы свободные ярлыки центровались по тому, что человек видит, а не по невидимой рамке.
+    virtual void groupPanelInset(int& top, int& bottom) const { top = 0; bottom = 0; }
 
     virtual void paintPanel(QPainter& p, const QRect& r, const QImage& backdrop, int effect) const;
     virtual void paintSidebarBack(QPainter& p, const QRect& r) const;

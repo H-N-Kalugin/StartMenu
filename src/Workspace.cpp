@@ -537,8 +537,18 @@ void Workspace::relayout()
                 geo.header = QRect(rx, y, geo.frame.width(), hdr);
                 geo.body = QRect(rx + pad, y + hdr, bodyW, bodyH);
                 geo.tiles.clear();
+                // Свободные ярлыки: весь набор плиток прижат влево / по центру / вправо внутри блока
+                int shiftX = 0;
+                if (g.loose && !packed[gi].isEmpty())
+                {
+                    int usedCells = 0;
+                    for (const QRect& cr : packed[gi])
+                        usedCells = qMax(usedCells, cr.x() + cr.width());
+                    shiftX = int((bodyW - cellsPx(usedCells)) * (g.alignH / 2.0));
+                    shiftX = qMax(0, shiftX);
+                }
                 for (const QRect& cr : packed[gi])
-                    geo.tiles.append(QRect(geo.body.x() + cr.x() * (Theme::Cell + Theme::CellGap),
+                    geo.tiles.append(QRect(geo.body.x() + shiftX + cr.x() * (Theme::Cell + Theme::CellGap),
                                            geo.body.y() + cr.y() * (Theme::Cell + Theme::CellGap),
                                            cellsPx(cr.width()), cellsPx(cr.height())));
                 rx += geo.frame.width() + Theme::GroupGapX;
@@ -552,6 +562,55 @@ void Workspace::relayout()
         m_columns.append({x, colW, y - Theme::GroupGapY});
         maxBottom = qMax(maxBottom, y - Theme::GroupGapY);
         x += colW + Theme::GroupGapX;
+    }
+    {
+        // Столбец из одних свободных ярлыков встаёт по высоте между соседними группами: сверху, по центру или снизу
+        // относительно самого высокого столбца с группами.
+        int inTop = 0, inBottom = 0;
+        Skin::current().groupPanelInset(inTop, inBottom);
+        QHash<int, int> colBottom, colAlign;
+        QSet<int> hasGroup;
+        int refTop = 1 << 30, refBottom = 0; // видимая высота соседних групп: от верха панели до её низа
+        for (int g = 0; g < n; ++g)
+        {
+            const int col = m_visualCol[g];
+            colBottom[col] = qMax(colBottom.value(col, 0), m_geo[g].frame.bottom() + 1);
+            if (groups[g].loose)
+            {
+                if (!colAlign.contains(col))
+                    colAlign[col] = groups[g].alignV;
+            }
+            else
+            {
+                hasGroup.insert(col);
+                refTop = qMin(refTop, m_geo[g].frame.top() + inTop);
+                refBottom = qMax(refBottom, m_geo[g].frame.bottom() + 1 + inBottom);
+            }
+        }
+        if (refTop == (1 << 30))
+            refTop = 0;
+        for (int g = 0; g < n; ++g)
+        {
+            const int col = m_visualCol[g];
+            if (!groups[g].loose || hasGroup.contains(col))
+                continue;
+            // Весь столбец свободных ярлыков (может быть несколько блоков друг под другом) двигаем одним куском
+            const int height = colBottom[col];
+            const int free = (refBottom - refTop) - height;
+            if (free <= 0)
+                continue;
+            const int dy = refTop + int(free * (colAlign.value(col, 1) / 2.0));
+            if (dy <= 0)
+                continue;
+            GroupGeo& geo = m_geo[g];
+            geo.frame.translate(0, dy);
+            geo.header.translate(0, dy);
+            geo.body.translate(0, dy);
+            for (QRect& r : geo.tiles)
+                r.translate(0, dy);
+        }
+        for (int g = 0; g < n; ++g)
+            maxBottom = qMax(maxBottom, m_geo[g].frame.bottom() + 1);
     }
     m_content = QSize(qMax(0, x - Theme::GroupGapX), qMax(0, maxBottom));
     // Номера групп: по колонкам слева направо, внутри — сверху вниз и слева направо.
@@ -2028,6 +2087,26 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
         a->setChecked(group.width == w.first);
         a->setData(w.first);
     }
+    // Выравнивание: по горизонтали внутри блока и по вертикали между соседними группами
+    QMenu* alignMenu = menu.addMenu(TXT("Выравнивание"));
+    const QStringList hNames{TXT("Слева"), TXT("По центру"), TXT("Справа")};
+    const QStringList vNames{TXT("Сверху"), TXT("По центру"), TXT("Снизу")};
+    alignMenu->addSection(TXT("По горизонтали"));
+    for (int k = 0; k < 3; ++k)
+    {
+        QAction* a = alignMenu->addAction(hNames[k]);
+        a->setCheckable(true);
+        a->setChecked(group.alignH == k);
+        a->setData(100 + k);
+    }
+    alignMenu->addSection(TXT("По вертикали"));
+    for (int k = 0; k < 3; ++k)
+    {
+        QAction* a = alignMenu->addAction(vNames[k]);
+        a->setCheckable(true);
+        a->setChecked(group.alignV == k);
+        a->setData(200 + k);
+    }
     const bool groupLabels = group.labels >= 0 ? group.labels == 1 : Theme::ShowLabels;
     QAction* labels = addCheck(menu, TXT("Подписи плиток"), groupLabels);
 
@@ -2035,7 +2114,15 @@ void Workspace::looseMenu(int g, const QPoint& globalPos)
     if (!chosen)
         return;
     auto& groups = Config::instance().groups();
-    if (chosen == toGroup)
+    if (chosen->data().isValid() && chosen->data().toInt() >= 100)
+    {
+        const int code = chosen->data().toInt();
+        if (code < 200)
+            groups[g].alignH = code - 100;
+        else
+            groups[g].alignV = code - 200;
+    }
+    else if (chosen == toGroup)
     {
         groups[g].loose = false;
         groups[g].clean = false;
