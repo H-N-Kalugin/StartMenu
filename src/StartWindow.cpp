@@ -710,13 +710,18 @@ void StartWindow::popup()
     // Меню открыли — заодно тихо проверяем обновления (не чаще раза в 2 часа): кружок появится, пока меню на экране
     if (Settings::get().checkUpdates)
     {
+        // С задержкой в пару секунд: ничего не делаем в момент открытия, пока идёт анимация появления
         QPointer<StartWindow> self(this);
-        Updater::check(false, [self](bool) {
-            if (self)
-            {
-                self->refreshUpdate();
-                self->update();
-            }
+        QTimer::singleShot(2500, this, [self] {
+            if (!self || !self->isVisible())
+                return;
+            Updater::check(false, [self](bool) {
+                if (self)
+                {
+                    self->refreshUpdate();
+                    self->update();
+                }
+            });
         });
     }
     // Тема «как в Windows»: если в Windows переключили светлую/тёмную — перекрашиваемся

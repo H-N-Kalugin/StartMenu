@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <chrono>
 #include <thread>
 
 using namespace winrt;
@@ -44,6 +45,8 @@ namespace Media
         std::int64_t startTicks = 0; // начало шкалы трека (для перемотки)
         std::wstring lastArtKey;
         std::vector<std::uint8_t> lastArt;
+        int artTries = 0;          // сколько раз пробовали получить обложку этого трека
+        bool needArtRetry = false; // трек есть, а обложки пока нет — Spotify присылает её с задержкой, повторим
 
         void push(Task t)
         {
@@ -143,14 +146,21 @@ namespace Media
                 const auto props = session.TryGetMediaPropertiesAsync().get();
                 s.title = std::wstring(props.Title());
                 s.artist = std::wstring(props.Artist());
-                // Обложку читаем заново только при смене трека.
+                // Обложку читаем заново при смене трека. Spotify в момент смены трека часто ещё не готов отдать картинку —
+                // поэтому, пока её нет, пробуем снова (до 20 раз с паузой около секунды), а не «запоминаем», что обложки нет.
                 const std::wstring key = s.app + L"|" + s.title + L"|" + s.artist;
                 if (key != lastArtKey)
                 {
                     lastArtKey = key;
                     lastArt.clear();
+                    artTries = 0;
+                }
+                if (lastArt.empty() && artTries < 20)
+                {
+                    ++artTries;
                     try { lastArt = readArt(props.Thumbnail()); } catch (...) {}
                 }
+                needArtRetry = lastArt.empty() && artTries < 20;
                 s.art = lastArt;
             }
             catch (...) {}
@@ -200,6 +210,7 @@ namespace Media
                 if (t.isCommand)
                     runCommand(t.cmd, t.ms);
                 State s;
+                needArtRetry = false;
                 try { s = read(); } catch (...) {}
                 std::function<void(const State&)> cb;
                 {
@@ -208,6 +219,14 @@ namespace Media
                 }
                 if (cb)
                     cb(s);
+                if (needArtRetry)
+                {
+                    // Обложки ещё нет — через секунду читаем снова (если за это время ничего другого не пришло)
+                    std::unique_lock lock(m);
+                    cv.wait_for(lock, std::chrono::seconds(1), [this] { return stop || !queue.empty(); });
+                    if (!stop && queue.empty())
+                        queue.push_back({});
+                }
             }
             unsubscribeSession();
             try

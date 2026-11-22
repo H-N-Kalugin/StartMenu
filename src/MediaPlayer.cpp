@@ -120,6 +120,8 @@ void MediaPlayer::apply(const Media::State& s)
     {
         m_key = key;
         m_art = s.art.empty() ? QImage() : QImage::fromData(s.art.data(), int(s.art.size()));
+        if (qEnvironmentVariableIsSet("STARTMENU_NO_ART"))
+            m_art = QImage(); // для снимков: показать заглушку вместо обложки
         // Размытая обложка для фона панели: сжать до крошечной и растянуть обратно — получается мягкое пятно.
         m_artBlur = m_art.isNull() ? QImage()
                                    : m_art.scaled(24, 24, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)

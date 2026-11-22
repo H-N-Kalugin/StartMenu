@@ -699,6 +699,20 @@ int main(int argc, char* argv[])
             // Служебное: сразу спросить GitHub о новой версии (код выхода 0 — ответ получен)
             QCoreApplication app(argc, argv);
             app.setApplicationName("StartMenu");
+            if (const int bi = int(app.arguments().indexOf(QStringLiteral("--bench"))); bi >= 0 && bi + 1 < app.arguments().size())
+            {
+                // Замер: сколько стоит вызов проверки, когда ещё «не пора» (так бывает при каждом открытии меню)
+                Updater::check(true, {});
+                QThread::msleep(4000); // дать первой проверке записать время
+                QElapsedTimer tm;
+                tm.start();
+                for (int k = 0; k < 100000; ++k)
+                    Updater::check(false, {});
+                QFile out(app.arguments()[bi + 1]);
+                if (out.open(QIODevice::WriteOnly | QIODevice::Text))
+                    out.write(QStringLiteral("100000 calls, %1 ms total, %2 us per call").arg(tm.elapsed()).arg(tm.nsecsElapsed() / 100000.0 / 1000.0, 0, 'f', 3).toUtf8());
+                return 0;
+            }
             // --soft — как делает меню само: с ограничением «не чаще раза в 2 часа»
             const bool soft = app.arguments().contains(QStringLiteral("--soft"));
             Updater::check(!soft, [](bool ok) { QCoreApplication::exit(ok ? 0 : 1); });

@@ -725,16 +725,33 @@ namespace
             p.restore();
             return;
         }
-        // Нет обложки — нота
+        // Нет обложки — нота: одна цельная векторная фигура (наклонная головка, ножка и флажок), без линий и кружков
         p.fillPath(clip, st.hoverBg);
+        static const QPainterPath note = [] {
+            QPainterPath head;
+            head.addEllipse(QPointF(8.2, 17.4), 4.1, 3.3);
+            QTransform tilt;
+            tilt.translate(8.2, 17.4);
+            tilt.rotate(-22);
+            tilt.translate(-8.2, -17.4);
+            QPainterPath stem;
+            stem.addRoundedRect(QRectF(11.3, 3.2, 2.1, 14.4), 1.0, 1.0);
+            QPainterPath flag;
+            flag.moveTo(13.4, 3.2);
+            flag.cubicTo(15.4, 5.8, 19.4, 6.4, 19.4, 11.0);
+            flag.cubicTo(18.4, 8.8, 16.2, 8.5, 13.4, 8.2);
+            flag.closeSubpath();
+            return tilt.map(head).united(stem).united(flag);
+        }();
         const QPointF c = QRectF(ar).center();
-        const qreal u = ar.height() / 24.0;
-        p.setPen(QPen(st.glyph, 1.6 * u, Qt::SolidLine, Qt::RoundCap));
-        p.drawLine(QPointF(c.x() + 2.5 * u, c.y() + 4 * u), QPointF(c.x() + 2.5 * u, c.y() - 6 * u));
-        p.drawLine(QPointF(c.x() + 2.5 * u, c.y() - 6 * u), QPointF(c.x() + 6 * u, c.y() - 4.5 * u));
-        p.setPen(Qt::NoPen);
-        p.setBrush(st.glyph);
-        p.drawEllipse(QPointF(c.x() - 0.2 * u, c.y() + 4 * u), 2.8 * u, 2.2 * u);
+        const qreal u = ar.height() / 24.0 * 0.95;
+        p.save();
+        p.setRenderHint(QPainter::Antialiasing);
+        p.translate(c);
+        p.scale(u, u);
+        p.translate(-11.7, -12.0); // центр фигуры
+        p.fillPath(note, st.glyph);
+        p.restore();
     }
 
     void paintButtons(QPainter& p, const MediaPaint& m, const MediaStyle& st, const std::function<QRect(int)>& rectOf,

@@ -16,6 +16,8 @@
 #include <QUrl>
 #include <QVersionNumber>
 
+#include <atomic>
+#include <thread>
 #include <windows.h>
 #include <shellapi.h>
 #include <urlmon.h>
@@ -119,15 +121,25 @@ std::optional<Info> visible()
 
 void check(bool force, std::function<void(bool)> done)
 {
-    const qint64 last = readState().value(QStringLiteral("checked")).toInteger();
+    // Вызывается при каждом открытии меню, поэтому в «не пора» должна быть почти бесплатной: время последней проверки
+    // держим в памяти, файл читаем только когда по памяти уже пора, а сеть и поток трогаем лишь раз в 2 часа.
+    static std::atomic<qint64> checkedAt{-1};
+    static std::atomic<bool> running{false};
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    // Не чаще раза в 2 часа: запрос крошечный, зато свежий выпуск виден в течение пары часов, а не суток
-    if (!force && now - last < 2 * 3600)
+    constexpr qint64 kEvery = 2 * 3600;
+    if (!force)
     {
-        onMain(done, true);
-        return;
+        const qint64 mem = checkedAt.load();
+        if (mem >= 0 && now - mem < kEvery)
+            return; // совсем недавно проверяли — ни диска, ни сети
+        const qint64 last = readState().value(QStringLiteral("checked")).toInteger(); // могла проверить другая копия (трей)
+        checkedAt = last;
+        if (now - last < kEvery || running.exchange(true))
+            return;
     }
-    QThreadPool::globalInstance()->start([done, now] {
+    // Отдельный поток с самым низким приоритетом: запрос не мешает ни меню, ни играм
+    std::thread([done, now, force] {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
         const QString tmp = QDir::tempPath() + QStringLiteral("/startmenu-release-%1.json").arg(now);
         // Метка времени в адресе — чтобы Windows не отдала старый ответ из кэша
         // Список, а не /releases/latest: пока выпусков нет, тот отвечает ошибкой 404
@@ -166,11 +178,14 @@ void check(bool force, std::function<void(bool)> done)
                 }
             }
         }
-        // Нет сети — время проверки не записываем, попробуем позже
+        // Нет сети — время проверки в файл не записываем; в памяти откладываем повтор на 10 минут, чтобы не стучаться при каждом открытии
+        checkedAt = got ? now : now - kEvery + 600;
+        if (!force)
+            running = false;
         if (got)
             writeState(state);
         onMain(done, got);
-    });
+    }).detach();
 }
 
 void install(const Info& info, std::function<void(bool)> done)
