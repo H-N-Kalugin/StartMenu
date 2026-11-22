@@ -137,6 +137,7 @@ private:
     void tileMenu(int g, int t, const QPoint& globalPos);
     void groupMenu(int g, const QPoint& globalPos);
     void looseMenu(int g, const QPoint& globalPos);   // меню блока свободных ярлыков
+    void addLooseTiles(const QList<Tile>& tiles, int savedColumn); // свободные ярлыки в колонку: в её блок свободных или в новый
     void emptyMenu(const QPoint& view, const QPoint& globalPos);
     void folderItemMenu(int child, const QPoint& globalPos);
     void launchItem(const Item& item, bool admin = false);

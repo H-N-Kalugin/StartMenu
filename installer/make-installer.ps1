@@ -112,5 +112,9 @@ $sedPath = Join-Path $pkg 'StartMenu.sed'
 [IO.File]::WriteAllText($sedPath, ($sed -replace "`r?`n", "`r`n"), [Text.Encoding]::ASCII)
 $p = Start-Process "$env:WINDIR\System32\iexpress.exe" -ArgumentList '/N', '/Q', $sedPath -Wait -PassThru
 if (-not (Test-Path $target)) { throw "IExpress не собрал установщик (код $($p.ExitCode))" }
+# Значок установщика — наш (IExpress ставит стандартный). Делаем до подписи: подпись должна быть последней.
+$ico = Join-Path $dist 'app.ico'
+& (Join-Path $stage 'StartMenu.exe') --write-ico $ico
+& (Join-Path $PSScriptRoot 'set-icon.ps1') -Exe $target -Ico $ico
 Sign-File $target
 '{0}  ({1:N1} МБ)' -f $target, ((Get-Item $target).Length / 1MB)

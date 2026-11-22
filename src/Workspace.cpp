@@ -1718,31 +1718,9 @@ void Workspace::applyTileDrop(const Drop& d, QList<Tile> moving, const Source& s
         break;
     }
     case DropKind::NewGroup:
-    {
-        // Пустое место — свободный ярлык. Он ложится в блок свободных ярлыков этой колонки и сам выстраивается рядом
-        // с остальными; нет блока — создаётся новый.
-        const int col = savedColumnFor(d.column);
-        int loose = -1;
-        for (int i = 0; i < groups.size(); ++i)
-            if (groups[i].loose && groups[i].column == col)
-            {
-                loose = i;
-                break;
-            }
-        if (loose >= 0)
-            groups[loose].tiles() += moving;
-        else
-        {
-            Group ng;
-            ng.loose = true;
-            ng.clean = true;
-            ng.column = col;
-            ng.width = Theme::GroupDefaultCells;
-            ng.tiles() = moving;
-            groups.append(ng);
-        }
+        // Пустое место — свободный ярлык (см. addLooseTiles)
+        addLooseTiles(moving, savedColumnFor(d.column));
         break;
-    }
     default:
         break;
     }
@@ -1755,6 +1733,26 @@ void Workspace::applyTileDrop(const Drop& d, QList<Tile> moving, const Source& s
     }
 
     finish();
+}
+
+// Свободные ярлыки ложатся в блок свободных ярлыков этой колонки и сами выстраиваются рядом с остальными;
+// нет блока — создаётся новый. Не сохраняет и не перерисовывает — это делает вызывающий (finish()).
+void Workspace::addLooseTiles(const QList<Tile>& tiles, int savedColumn)
+{
+    auto& groups = Config::instance().groups();
+    for (Group& g : groups)
+        if (g.loose && g.column == savedColumn)
+        {
+            g.tiles() += tiles;
+            return;
+        }
+    Group ng;
+    ng.loose = true;
+    ng.clean = true;
+    ng.column = savedColumn;
+    ng.width = Theme::GroupDefaultCells;
+    ng.tiles() = tiles;
+    groups.append(ng);
 }
 
 void Workspace::applyGroupDrop(const Drop& d, int srcGroup)
@@ -2307,8 +2305,13 @@ void Workspace::emptyMenu(const QPoint& view, const QPoint& globalPos)
     QMenu menu(this);
     QAction* add = menu.addAction(TXT("Новая группа"));
     QAction* addList = menu.addAction(TXT("Новая группа-список"));
-    QAction* addLink = menu.addAction(TXT("Добавить ссылку на сайт…"));
-    QAction* addFolder = menu.addAction(TXT("Добавить папку…"));
+    // Папку и ссылку на сайт можно добавить отдельным ярлыком (без группы) или в новую группу
+    QMenu* looseMenuAdd = menu.addMenu(TXT("Добавить ярлык"));
+    QAction* looseFolder = looseMenuAdd->addAction(TXT("Папку…"));
+    QAction* looseLink = looseMenuAdd->addAction(TXT("Ссылку на сайт…"));
+    QMenu* groupMenuAdd = menu.addMenu(TXT("Добавить в новую группу"));
+    QAction* addFolder = groupMenuAdd->addAction(TXT("Папку…"));
+    QAction* addLink = groupMenuAdd->addAction(TXT("Ссылку на сайт…"));
     menu.addSeparator();
     QAction* labels = addCheck(menu, TXT("Подписи во всех группах"), Theme::ShowLabels);
     QAction* settings = menu.addAction(TXT("Настройки меню…"));
@@ -2325,6 +2328,26 @@ void Workspace::emptyMenu(const QPoint& view, const QPoint& globalPos)
     }
     if (!chosen)
         return;
+    if (chosen == looseFolder || chosen == looseLink)
+    {
+        Tile tile{Item{}, TileSize::Medium, false, {}};
+        if (chosen == looseLink)
+        {
+            if (!askLink(tile.item))
+                return;
+        }
+        else
+        {
+            BusyGuard busy2(this);
+            const QString dir = QFileDialog::getExistingDirectory(this, TXT("Папка для группы"));
+            if (dir.isEmpty())
+                return;
+            tile.item = Config::itemFromPath(dir);
+        }
+        addLooseTiles({tile}, savedColumnFor(columnAt(toContent(view).x())));
+        finish();
+        return;
+    }
     Group ng;
     ng.title() = TXT("Новая группа");
     if (chosen == addList)

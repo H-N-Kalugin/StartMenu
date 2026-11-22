@@ -116,7 +116,10 @@ void MediaPlayer::apply(const Media::State& s)
         m_posClock.start();
     }
     const QString key = m_title + QLatin1Char('|') + m_artist;
-    if (key != m_key)
+    // Обложка обрабатывается при смене трека — и ещё когда она пришла позже (Spotify присылает её с задержкой
+    // уже после смены трека; раньше такая обложка терялась до следующего трека).
+    const bool artArrived = key == m_key && m_art.isNull() && !s.art.empty() && !qEnvironmentVariableIsSet("STARTMENU_NO_ART");
+    if (key != m_key || artArrived)
     {
         m_key = key;
         m_art = s.art.empty() ? QImage() : QImage::fromData(s.art.data(), int(s.art.size()));
