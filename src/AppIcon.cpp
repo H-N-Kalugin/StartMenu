@@ -53,6 +53,24 @@ QIcon icon()
     return ic;
 }
 
+QIcon iconWithDot()
+{
+    QIcon ic;
+    for (int s : {16, 20, 24, 32, 40, 48, 64, 128, 256})
+    {
+        QImage img = render(s);
+        QPainter p(&img);
+        p.setRenderHint(QPainter::Antialiasing);
+        const qreal d = s * 0.38; // диаметр точки
+        const QRectF dot(s - d - s * 0.02, s * 0.02, d, d);
+        p.setPen(QPen(QColor(20, 20, 22), qMax(1.0, s * 0.05)));
+        p.setBrush(QColor(0x4C, 0x8D, 0xFF));
+        p.drawEllipse(dot);
+        ic.addPixmap(QPixmap::fromImage(img));
+    }
+    return ic;
+}
+
 // Формат .ico: заголовок + оглавление + картинки (PNG внутри .ico Windows понимает с Vista).
 bool writeIco(const QString& path)
 {

@@ -373,8 +373,28 @@ void StartWindow::addLayer()
     update();
 }
 
+QRect StartWindow::updateRect() const
+{
+    if (m_updateVersion.isEmpty())
+        return {};
+    QFont f = Skin::current().font(Skin::Font::Meta);
+    f.setPixelSize(11);
+    const QString text = m_updateBusy ? TXT("Скачиваю установщик…") : TXT("Доступна версия %1").arg(m_updateVersion);
+    const int w = QFontMetrics(f).horizontalAdvance(text) + 12;
+    return QRect(width() - Theme::ContentMargin - w, height() - 22, w, 18);
+}
+
 void StartWindow::mouseMoveEvent(QMouseEvent* e)
 {
+    {
+        const bool over = updateRect().contains(e->position().toPoint());
+        if (over != m_updateHover)
+        {
+            m_updateHover = over;
+            setCursor(over ? Qt::PointingHandCursor : Qt::ArrowCursor);
+            update(updateRect().adjusted(-4, -2, 4, 2));
+        }
+    }
     const int h = layerAt(e->position().toPoint());
     if (h != m_layerHover)
     {
@@ -465,6 +485,10 @@ void StartWindow::startStats()
 
 void StartWindow::prepareRender(bool clipboard)
 {
+    {
+        const auto upd = Settings::get().checkUpdates ? Updater::available() : std::nullopt;
+        m_updateVersion = upd ? upd->version : QString();
+    }
     if (clipboard)
         setView(View::Clipboard);
     if (Settings::get().systemMonitor)
@@ -588,7 +612,11 @@ void StartWindow::showEvent(QShowEvent* e)
     m_media->setWindowShown(true);
     layoutChildren();
     m_sidebar->setClipboardDot(Settings::get().clipboardHistory && ClipboardStore::hasUnseen());
-    m_sidebar->setUpdateDot(Settings::get().checkUpdates && Updater::available().has_value());
+    {
+        const auto upd = Settings::get().checkUpdates ? Updater::available() : std::nullopt;
+        m_sidebar->setUpdateDot(upd.has_value());
+        m_updateVersion = upd ? upd->version : QString();
+    }
     startStats();
 }
 
@@ -926,6 +954,21 @@ void StartWindow::paintEvent(QPaintEvent*)
         }
     }
 
+    if (const QRect ur = updateRect(); ur.isValid())
+    {
+        // Едва заметно: мелкий приглушённый текст; при наведении — обычный цвет и подчёркивание
+        QFont f = skin.font(Skin::Font::Meta);
+        f.setPixelSize(11);
+        f.setUnderline(m_updateHover && !m_updateBusy);
+        p.setFont(f);
+        QColor c = m_updateHover ? Theme::TextColor.color() : Theme::SubText.color();
+        if (!m_updateHover)
+            c.setAlphaF(0.75);
+        p.setPen(c);
+        p.drawText(ur, Qt::AlignRight | Qt::AlignVCenter,
+                   m_updateBusy ? TXT("Скачиваю установщик…") : TXT("Доступна версия %1").arg(m_updateVersion));
+    }
+
     if (!m_firstPaintLogged)
     {
         // Замер (STARTMENU_PERF): время первой отрисовки и память — после того, как кадр отрисован.
@@ -1100,6 +1143,20 @@ void StartWindow::startSearchCaret()
 
 void StartWindow::mousePressEvent(QMouseEvent* e)
 {
+    if (e->button() == Qt::LeftButton && !m_updateBusy && updateRect().contains(e->position().toPoint()))
+    {
+        if (const auto info = Updater::available())
+        {
+            m_updateBusy = true;
+            update();
+            Updater::install(*info, [this](bool ok) {
+                m_updateBusy = false;
+                if (!ok)
+                    update();
+            });
+            return;
+        }
+    }
     if (e->button() == Qt::LeftButton)
     {
         const int l = layerAt(e->position().toPoint());

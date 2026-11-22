@@ -498,13 +498,20 @@ namespace
 
         // Обновления: проверка не чаще раза в сутки (сама следит по времени последней проверки)
         QTimer updateTimer;
-        auto checkUpdates = [&buildTrayMenu] {
+        // Новая версия: точка на значке трея и строка в его меню. Всплывающих уведомлений нет — чтобы не отвлекать.
+        auto refreshUpdateBadge = [&tray, &buildTrayMenu] {
+            const bool has = Settings::get().checkUpdates && Updater::available().has_value();
+            tray.setIcon(has ? AppIcon::iconWithDot() : AppIcon::icon());
+            buildTrayMenu();
+        };
+        auto checkUpdates = [&refreshUpdateBadge] {
             if (Settings::get().checkUpdates)
-                Updater::check(false, [&buildTrayMenu](bool) { buildTrayMenu(); });
+                Updater::check(false, [&refreshUpdateBadge](bool) { refreshUpdateBadge(); });
         };
         QObject::connect(&updateTimer, &QTimer::timeout, &app, checkUpdates);
         updateTimer.start(3 * 3600 * 1000);
         QTimer::singleShot(60 * 1000, &app, checkUpdates);
+        QTimer::singleShot(1000, &app, refreshUpdateBadge); // ответ предыдущей проверки уже сохранён на диске
 
         // Сторожок: Windows может молча снять хук, если система подвисла, — проверяем раз в 3 с.
         QTimer watchdog;

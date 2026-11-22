@@ -99,6 +99,11 @@ private:
     // Слои (страницы плиток): переключатель рядом с поиском
     QList<QRect> m_layerRects;
     QRect m_layerAdd;
+    // «Доступна версия X» — тихая надпись внизу справа
+    QString m_updateVersion;
+    bool m_updateBusy = false;
+    bool m_updateHover = false;
+    QRect updateRect() const;
     int m_layerHover = -1;     // индекс слоя, -2 — «+»
     int layerAt(const QPoint& pos) const;
     void switchLayer(int i);
