@@ -106,6 +106,7 @@ private:
     bool m_updateHover = false;
     qreal m_pulse = 0;               // фаза пульсации 0..1
     QTimer* m_pulseTimer = nullptr;
+    QElapsedTimer m_pulseClock;      // время с начала пульсации — фаза не «прыгает», если кадр запоздал
     QRect updateRect() const;        // номер версии (+ кружок)
     void refreshUpdate();
     void updateMenu();

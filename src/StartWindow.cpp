@@ -379,8 +379,9 @@ QRect StartWindow::updateRect() const
     QFont f = Skin::current().font(Skin::Font::Meta);
     f.setPixelSize(11);
     const QString text = m_updateBusy ? TXT("Скачиваю установщик…") : QStringLiteral("v") + Updater::currentVersion();
-    const int w = QFontMetrics(f).horizontalAdvance(text) + 8 + (m_updateNew ? 22 : 0);
-    return QRect(width() - Theme::ContentMargin - w, height() - 22, w, 18);
+    const int w = QFontMetrics(f).horizontalAdvance(text) + 8;
+    const int extra = m_updateNew ? 8 : 0; // кружок сидит над последней цифрой
+    return QRect(width() - Theme::ContentMargin - w, height() - 22 - extra, w, 18 + extra);
 }
 
 void StartWindow::refreshUpdate()
@@ -393,14 +394,18 @@ void StartWindow::refreshUpdate()
     {
         // Пульсация идёт только пока меню на экране и есть что показывать
         m_pulseTimer = new QTimer(this);
-        m_pulseTimer->setInterval(40);
+        m_pulseTimer->setInterval(16);
+        m_pulseTimer->setTimerType(Qt::PreciseTimer);
         connect(m_pulseTimer, &QTimer::timeout, this, [this] {
-            m_pulse = std::fmod(m_pulse + 0.025, 1.0);
-            update(updateRect().adjusted(-6, -8, 6, 8));
+            m_pulse = double(m_pulseClock.elapsed() % 2400) / 2400.0; // один оборот — 2,4 с
+            update(updateRect().adjusted(-10, -12, 10, 2));
         });
     }
     if (m_updateNew && isVisible())
+    {
+        m_pulseClock.start();
         m_pulseTimer->start();
+    }
     else
         m_pulseTimer->stop();
 }
@@ -1022,25 +1027,28 @@ void StartWindow::paintEvent(QPaintEvent*)
                    m_updateBusy ? TXT("Скачиваю установщик…") : QStringLiteral("v") + Updater::currentVersion());
         if (m_updateNew && !m_updateBusy)
         {
-            const QPointF ctr(ur.left() + 8, ur.center().y() + 0.5);
+            // Крошечный кружок в правом верхнем углу номера (над последней цифрой). Две плавные волны и мягкое «дыхание».
+            const QFontMetrics fm(f);
+            const QPointF ctr(ur.right() - fm.horizontalAdvance(QLatin1Char('0')) / 2.0, ur.top() + 5.5);
             const QColor acc = Theme::Accent.color();
             p.setRenderHint(QPainter::Antialiasing);
             p.setBrush(Qt::NoBrush);
+            auto ease = [](qreal x) { return 1.0 - (1.0 - x) * (1.0 - x) * (1.0 - x); }; // быстро расходится, медленно тает
             for (int k = 0; k < 2; ++k)
             {
-                // Две волны, сдвинутые по фазе: растут и тают
                 const qreal ph = std::fmod(m_pulse + k * 0.5, 1.0);
+                const qreal e = ease(ph);
                 QColor wc = acc;
-                wc.setAlphaF(0.55 * (1.0 - ph));
-                p.setPen(QPen(wc, 1.2));
-                const qreal rad = 3.0 + 7.0 * ph;
+                wc.setAlphaF(float(0.5 * (1.0 - e) * (1.0 - e)));
+                p.setPen(QPen(wc, 1.0));
+                const qreal rad = 2.2 + 5.5 * e;
                 p.drawEllipse(ctr, rad, rad);
             }
             QColor dc = acc;
-            dc.setAlphaF(0.65 + 0.35 * std::sin(m_pulse * 6.2831853)); // мерцание
+            dc.setAlphaF(float(0.8 + 0.2 * std::cos(m_pulse * 6.2831853 * 2))); // дыхание дважды за оборот
             p.setPen(Qt::NoPen);
             p.setBrush(dc);
-            p.drawEllipse(ctr, 3.2, 3.2);
+            p.drawEllipse(ctr, 2.0, 2.0);
         }
     }
 
