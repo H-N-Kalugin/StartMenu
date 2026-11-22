@@ -1,0 +1,74 @@
+# Сборка установщика на серверах GitHub.
+# Запускается вручную (Actions → Build → Run workflow) или при метке версии v1.2.3.
+# SignPath подписывает только то, что собрано здесь, — поэтому сборка релизов идёт через этот файл.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Qt 6.8.3
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          windeployqt --release --no-translations --no-system-d3d-compiler --no-system-dxc-compiler --no-opengl-sw `
+            --no-compiler-runtime --skip-plugin-types iconengines,generic,networkinformation,tls,styles build\StartMenu.exe
+          # Те же лишние файлы, что убирает build.cmd
+          Get-ChildItem build\imageformats\*.dll | Where-Object { $_.BaseName -notin 'qjpeg', 'qwebp', 'qgif', 'qico' } | Remove-Item
+          Remove-Item build\Qt6Svg.dll, build\dxcompiler.dll, build\dxil.dll -ErrorAction SilentlyContinue
+          Remove-Item build\styles -Recurse -ErrorAction SilentlyContinue
+
+      - name: Installer
+        shell: pwsh
+        run: ./installer/make-installer.ps1
+
+      - name: Upload (unsigned)
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: StartMenu-installer
+          path: dist/StartMenu-*.exe
+          if-no-files-found: error
+
+      # Подпись через SignPath Foundation — включить после одобрения заявки:
+      # 1) в настройках репозитория добавить секрет SIGNPATH_API_TOKEN;
+      # 2) подставить свои organization-id и slug'и из кабинета SignPath;
+      # 3) убрать комментарии ниже.
+      # - name: Sign with SignPath
+      #   uses: signpath/github-action-submit-signing-request@v1
+      #   with:
+      #     api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+      #     organization-id: '<organization-id>'
+      #     project-slug: 'StartMenu'
+      #     signing-policy-slug: 'release-signing'
+      #     artifact-configuration-slug: 'installer'
+      #     github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      #     wait-for-completion: true
+      #     output-artifact-directory: signed
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: StartMenu-installer-signed
+      #     path: signed
