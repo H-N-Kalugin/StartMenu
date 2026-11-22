@@ -11,6 +11,7 @@
 #include "PlayerWindow.h"
 #include "SearchExtras.h"
 #include "Settings.h"
+#include <cmath>
 #include "Skin.h"
 #include "Shell.h"
 #include "Sidebar.h"
@@ -375,19 +376,76 @@ void StartWindow::addLayer()
 
 QRect StartWindow::updateRect() const
 {
-    if (m_updateVersion.isEmpty())
-        return {};
     QFont f = Skin::current().font(Skin::Font::Meta);
     f.setPixelSize(11);
-    const QString text = m_updateBusy ? TXT("Скачиваю установщик…") : TXT("Доступна версия %1").arg(m_updateVersion);
-    const int w = QFontMetrics(f).horizontalAdvance(text) + 12;
+    const QString text = m_updateBusy ? TXT("Скачиваю установщик…") : QStringLiteral("v") + Updater::currentVersion();
+    const int w = QFontMetrics(f).horizontalAdvance(text) + 8 + (m_updateNew ? 22 : 0);
     return QRect(width() - Theme::ContentMargin - w, height() - 22, w, 18);
+}
+
+void StartWindow::refreshUpdate()
+{
+    const auto upd = Updater::visible();
+    m_updateNew = upd.has_value();
+    m_updateVersion = upd ? upd->version : QString();
+    m_sidebar->setUpdateDot(m_updateNew);
+    if (!m_pulseTimer)
+    {
+        // Пульсация идёт только пока меню на экране и есть что показывать
+        m_pulseTimer = new QTimer(this);
+        m_pulseTimer->setInterval(40);
+        connect(m_pulseTimer, &QTimer::timeout, this, [this] {
+            m_pulse = std::fmod(m_pulse + 0.025, 1.0);
+            update(updateRect().adjusted(-6, -8, 6, 8));
+        });
+    }
+    if (m_updateNew && isVisible())
+        m_pulseTimer->start();
+    else
+        m_pulseTimer->stop();
+}
+
+void StartWindow::updateMenu()
+{
+    const auto info = Updater::available();
+    if (!info)
+        return;
+    setBusy(true);
+    QMenu menu(this);
+    QAction* upd = menu.addAction(TXT("Обновить до версии %1").arg(info->version));
+    QAction* hide = m_updateNew ? menu.addAction(TXT("Скрыть уведомление")) : nullptr;
+    const QRect r = updateRect();
+    const QSize sz = menu.sizeHint();
+    QAction* chosen = menu.exec(mapToGlobal(QPoint(r.right() - sz.width(), r.top() - sz.height() - 4)));
+    setBusy(false);
+    if (chosen == upd)
+    {
+        m_updateBusy = true;
+        update();
+        Updater::install(*info, [this](bool) {
+            m_updateBusy = false;
+            update();
+        });
+    }
+    else if (hide && chosen == hide)
+    {
+        Settings::get().hiddenUpdate = info->version;
+        Settings::get().save();
+        refreshUpdate();
+        // Трей уберёт точку со значка
+        if (HANDLE ev = OpenEventW(EVENT_MODIFY_STATE, FALSE, L"Local\\StartMenu.App.HostReload"))
+        {
+            SetEvent(ev);
+            CloseHandle(ev);
+        }
+        update();
+    }
 }
 
 void StartWindow::mouseMoveEvent(QMouseEvent* e)
 {
     {
-        const bool over = updateRect().contains(e->position().toPoint());
+        const bool over = Updater::available().has_value() && updateRect().contains(e->position().toPoint());
         if (over != m_updateHover)
         {
             m_updateHover = over;
@@ -485,10 +543,7 @@ void StartWindow::startStats()
 
 void StartWindow::prepareRender(bool clipboard)
 {
-    {
-        const auto upd = Settings::get().checkUpdates ? Updater::available() : std::nullopt;
-        m_updateVersion = upd ? upd->version : QString();
-    }
+    refreshUpdate();
     if (clipboard)
         setView(View::Clipboard);
     if (Settings::get().systemMonitor)
@@ -612,11 +667,7 @@ void StartWindow::showEvent(QShowEvent* e)
     m_media->setWindowShown(true);
     layoutChildren();
     m_sidebar->setClipboardDot(Settings::get().clipboardHistory && ClipboardStore::hasUnseen());
-    {
-        const auto upd = Settings::get().checkUpdates ? Updater::available() : std::nullopt;
-        m_sidebar->setUpdateDot(upd.has_value());
-        m_updateVersion = upd ? upd->version : QString();
-    }
+    refreshUpdate();
     startStats();
 }
 
@@ -625,6 +676,8 @@ void StartWindow::hideEvent(QHideEvent* e)
     QWidget::hideEvent(e);
     syncPlayer();
     m_statsTimer->stop();
+    if (m_pulseTimer)
+        m_pulseTimer->stop();
     m_media->setWindowShown(false);
     if (m_view == View::Clipboard)
         setView(View::Tiles); // в следующий раз меню открывается с плиток
@@ -954,19 +1007,41 @@ void StartWindow::paintEvent(QPaintEvent*)
         }
     }
 
-    if (const QRect ur = updateRect(); ur.isValid())
     {
-        // Едва заметно: мелкий приглушённый текст; при наведении — обычный цвет и подчёркивание
+        // Номер версии — мелко и приглушённо. Есть обновление — рядом пульсирует кружок с расходящимися волнами.
+        const QRect ur = updateRect();
         QFont f = skin.font(Skin::Font::Meta);
         f.setPixelSize(11);
         f.setUnderline(m_updateHover && !m_updateBusy);
         p.setFont(f);
         QColor c = m_updateHover ? Theme::TextColor.color() : Theme::SubText.color();
         if (!m_updateHover)
-            c.setAlphaF(0.75);
+            c.setAlphaF(0.7f);
         p.setPen(c);
         p.drawText(ur, Qt::AlignRight | Qt::AlignVCenter,
-                   m_updateBusy ? TXT("Скачиваю установщик…") : TXT("Доступна версия %1").arg(m_updateVersion));
+                   m_updateBusy ? TXT("Скачиваю установщик…") : QStringLiteral("v") + Updater::currentVersion());
+        if (m_updateNew && !m_updateBusy)
+        {
+            const QPointF ctr(ur.left() + 8, ur.center().y() + 0.5);
+            const QColor acc = Theme::Accent.color();
+            p.setRenderHint(QPainter::Antialiasing);
+            p.setBrush(Qt::NoBrush);
+            for (int k = 0; k < 2; ++k)
+            {
+                // Две волны, сдвинутые по фазе: растут и тают
+                const qreal ph = std::fmod(m_pulse + k * 0.5, 1.0);
+                QColor wc = acc;
+                wc.setAlphaF(0.55 * (1.0 - ph));
+                p.setPen(QPen(wc, 1.2));
+                const qreal rad = 3.0 + 7.0 * ph;
+                p.drawEllipse(ctr, rad, rad);
+            }
+            QColor dc = acc;
+            dc.setAlphaF(0.65 + 0.35 * std::sin(m_pulse * 6.2831853)); // мерцание
+            p.setPen(Qt::NoPen);
+            p.setBrush(dc);
+            p.drawEllipse(ctr, 3.2, 3.2);
+        }
     }
 
     if (!m_firstPaintLogged)
@@ -1143,19 +1218,10 @@ void StartWindow::startSearchCaret()
 
 void StartWindow::mousePressEvent(QMouseEvent* e)
 {
-    if (e->button() == Qt::LeftButton && !m_updateBusy && updateRect().contains(e->position().toPoint()))
+    if (e->button() == Qt::LeftButton && !m_updateBusy && Updater::available() && updateRect().contains(e->position().toPoint()))
     {
-        if (const auto info = Updater::available())
-        {
-            m_updateBusy = true;
-            update();
-            Updater::install(*info, [this](bool ok) {
-                m_updateBusy = false;
-                if (!ok)
-                    update();
-            });
-            return;
-        }
+        updateMenu();
+        return;
     }
     if (e->button() == Qt::LeftButton)
     {

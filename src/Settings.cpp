@@ -123,6 +123,7 @@ void Settings::load()
     theme = std::clamp(o["theme"].toInt(theme), 0, 2);
     showHints = o["showHints"].toBool(showHints);
     checkUpdates = o["checkUpdates"].toBool(checkUpdates);
+    hiddenUpdate = o["hiddenUpdate"].toString();
     apply();
 }
 
@@ -156,6 +157,7 @@ void Settings::save() const
     o["showHints"] = showHints;
     o["theme"] = theme;
     o["checkUpdates"] = checkUpdates;
+    o["hiddenUpdate"] = hiddenUpdate;
     const FileLock lock;
     keepBackup(filePath());
     QSaveFile f(filePath());

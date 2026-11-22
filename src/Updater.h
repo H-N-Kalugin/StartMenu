@@ -17,6 +17,7 @@ struct Info
 QString currentVersion();
 QString issuesUrl();                 // «Сообщить об ошибке / идея»
 std::optional<Info> available();     // есть версия новее текущей (по сохранённому ответу)
+std::optional<Info> visible();       // то же, но без версии, о которой попросили не напоминать (точки, надпись)
 // Проверить в фоне. force=false — не чаще раза в сутки. done вызывается в главном потоке.
 void check(bool force, std::function<void(bool ok)> done = {});
 // Скачать установщик и запустить; не вышло — открыть страницу выпуска. done — в главном потоке.

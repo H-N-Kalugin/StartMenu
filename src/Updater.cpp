@@ -1,4 +1,5 @@
 #include "Updater.h"
+#include "Settings.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -104,6 +105,16 @@ std::optional<Info> available()
             cached = Info{v, o.value(QStringLiteral("page")).toString(), o.value(QStringLiteral("installer")).toString()};
     }
     return cached;
+}
+
+std::optional<Info> visible()
+{
+    auto info = available();
+    if (info && !Settings::get().checkUpdates)
+        return std::nullopt;
+    if (info && info->version == Settings::get().hiddenUpdate)
+        return std::nullopt;
+    return info;
 }
 
 void check(bool force, std::function<void(bool)> done)

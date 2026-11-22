@@ -500,7 +500,7 @@ namespace
         QTimer updateTimer;
         // Новая версия: точка на значке трея и строка в его меню. Всплывающих уведомлений нет — чтобы не отвлекать.
         auto refreshUpdateBadge = [&tray, &buildTrayMenu] {
-            const bool has = Settings::get().checkUpdates && Updater::available().has_value();
+            const bool has = Updater::visible().has_value();
             tray.setIcon(has ? AppIcon::iconWithDot() : AppIcon::icon());
             buildTrayMenu();
         };

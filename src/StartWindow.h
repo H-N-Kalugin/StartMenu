@@ -100,10 +100,15 @@ private:
     QList<QRect> m_layerRects;
     QRect m_layerAdd;
     // «Доступна версия X» — тихая надпись внизу справа
-    QString m_updateVersion;
+    bool m_updateNew = false;        // есть версия новее (и о ней не попросили молчать): рядом с номером пульсирует кружок
+    QString m_updateVersion;         // какая именно
     bool m_updateBusy = false;
     bool m_updateHover = false;
-    QRect updateRect() const;
+    qreal m_pulse = 0;               // фаза пульсации 0..1
+    QTimer* m_pulseTimer = nullptr;
+    QRect updateRect() const;        // номер версии (+ кружок)
+    void refreshUpdate();
+    void updateMenu();
     int m_layerHover = -1;     // индекс слоя, -2 — «+»
     int layerAt(const QPoint& pos) const;
     void switchLayer(int i);

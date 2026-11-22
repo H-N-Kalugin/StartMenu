@@ -786,6 +786,7 @@ void SettingsWindow::applyPreset(int index)
     const int mediaColor = s.mediaColor;
     const bool clipboardHistory = s.clipboardHistory, systemMonitor = s.systemMonitor;
     const bool showHints = s.showHints, checkUpdates = s.checkUpdates;
+    const QString hiddenUpdate = s.hiddenUpdate;
     const int theme = s.theme;
     const QString linkBrowser = s.linkBrowser;
     const Settings::Position position = s.position;
@@ -808,6 +809,7 @@ void SettingsWindow::applyPreset(int index)
     s.showHints = showHints;
     s.theme = theme;
     s.checkUpdates = checkUpdates;
+    s.hiddenUpdate = hiddenUpdate;
     s.position = position;
     s.bottomGap = bottomGap;
     s.skin = skin;
