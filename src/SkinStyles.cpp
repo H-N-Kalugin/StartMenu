@@ -158,8 +158,10 @@ namespace
 
         void paintSidebarBack(QPainter& p, const QRect& r) const override
         {
-            p.fillRect(r, QColor(6, 7, 9, 100));
-            p.fillRect(QRect(r.right(), r.top(), 1, r.height()), white(0.07));
+            // Светлая тема: панель того же цвета, что меню, отделена тонкой тёмной линией
+            if (!Theme::Light)
+                p.fillRect(r, QColor(6, 7, 9, 100));
+            p.fillRect(QRect(r.right(), r.top(), 1, r.height()), Theme::Light ? QColor(0, 0, 0, 34) : white(0.07));
         }
 
         void paintSidebarButton(QPainter& p, const SidebarButtonPaint& b) const override
@@ -319,7 +321,7 @@ namespace
             // Полупрозрачные крестики в узлах сетки — там, где нет групп.
             if (pitch < 8)
                 return;
-            const QColor c = white(0.09);
+            const QColor c = Theme::Light ? QColor(0, 0, 0, 40) : white(0.09);
             const int gap = Theme::CellGap;
             const int x0 = origin.x() - gap / 2 + ((area.left() - origin.x()) / pitch) * pitch;
             const int y0 = origin.y() - gap / 2 + qMax(0, (area.top() - origin.y()) / pitch) * pitch;
@@ -352,13 +354,16 @@ namespace
                 const QRect panel(g.frame.left() - 8, g.header.top() + 6, g.frame.width() + 16,
                                   g.body.bottom() + 8 - (g.header.top() + 6) + 1);
                 p.setPen(QPen(base.isValid() ? withAlpha(Skin::mix(base, Qt::white, 0.55), 0.14) : white(0.06), 1));
-                p.setBrush(base.isValid() ? withAlpha(Skin::mix(base, QColor(10, 12, 16), 0.45), 0.26) : groupBg());
+                // В светлой теме цвет группы осветляем, иначе тёмный цвет даёт грязно-серую панель
+                p.setBrush(!base.isValid() ? groupBg()
+                           : Theme::Light ? withAlpha(Skin::mix(base, Qt::white, 0.8), 0.45)
+                                          : withAlpha(Skin::mix(base, QColor(10, 12, 16), 0.45), 0.26));
                 p.drawRoundedRect(QRectF(panel).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
             }
             // Заголовок: название слева + линия 1 px по низу строки заголовка.
             const int lineY = g.header.bottom() - 3;
             p.fillRect(QRect(g.frame.left(), lineY, g.frame.width(), 1),
-                       !gr.clean && base.isValid() ? withAlpha(Skin::mix(base, Qt::white, 0.6), 0.16) : white(0.13));
+                       !gr.clean && base.isValid() && !Theme::Light ? withAlpha(Skin::mix(base, Qt::white, 0.6), 0.16) : white(0.13));
             const QFont f = font(Font::GroupTitle);
             const QFontMetrics fm(f);
             p.setFont(f);
@@ -427,7 +432,7 @@ namespace
 
             const QColor fill = Skin::mix(tileBg(), tileHot(0.06), t.hover);
             p.setPen(QPen(white(0.055 + 0.105 * t.hover), 1));
-            p.setBrush(t.pressed ? QColor(20, 21, 24, 240) : fill);
+            p.setBrush(t.pressed ? (Theme::Light ? QColor(0, 0, 0, 30) : QColor(20, 21, 24, 240)) : fill);
             p.drawRoundedRect(QRectF(r).adjusted(0.5, 0.5, -0.5, -0.5), 2.5, 2.5);
 
             const qreal s = k();
