@@ -707,6 +707,18 @@ QImage StartWindow::renderWithPlayer()
 
 void StartWindow::popup()
 {
+    // Меню открыли — заодно тихо проверяем обновления (не чаще раза в 2 часа): кружок появится, пока меню на экране
+    if (Settings::get().checkUpdates)
+    {
+        QPointer<StartWindow> self(this);
+        Updater::check(false, [self](bool) {
+            if (self)
+            {
+                self->refreshUpdate();
+                self->update();
+            }
+        });
+    }
     // Тема «как в Windows»: если в Windows переключили светлую/тёмную — перекрашиваемся
     if (Settings::get().theme == 2 && Settings::windowsLight() != Theme::Light)
         reloadSettings();

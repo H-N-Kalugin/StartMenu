@@ -121,7 +121,8 @@ void check(bool force, std::function<void(bool)> done)
 {
     const qint64 last = readState().value(QStringLiteral("checked")).toInteger();
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    if (!force && now - last < 20 * 3600)
+    // Не чаще раза в 2 часа: запрос крошечный, зато свежий выпуск виден в течение пары часов, а не суток
+    if (!force && now - last < 2 * 3600)
     {
         onMain(done, true);
         return;

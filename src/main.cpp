@@ -512,7 +512,7 @@ namespace
                 Updater::check(false, [&refreshUpdateBadge](bool) { refreshUpdateBadge(); });
         };
         QObject::connect(&updateTimer, &QTimer::timeout, &app, checkUpdates);
-        updateTimer.start(3 * 3600 * 1000);
+        updateTimer.start(1 * 3600 * 1000); // раз в час спрашиваем; сама проверка пропускается, если недавно была
         QTimer::singleShot(60 * 1000, &app, checkUpdates);
         QTimer::singleShot(1000, &app, refreshUpdateBadge); // ответ предыдущей проверки уже сохранён на диске
 
@@ -699,7 +699,9 @@ int main(int argc, char* argv[])
             // Служебное: сразу спросить GitHub о новой версии (код выхода 0 — ответ получен)
             QCoreApplication app(argc, argv);
             app.setApplicationName("StartMenu");
-            Updater::check(true, [](bool ok) { QCoreApplication::exit(ok ? 0 : 1); });
+            // --soft — как делает меню само: с ограничением «не чаще раза в 2 часа»
+            const bool soft = app.arguments().contains(QStringLiteral("--soft"));
+            Updater::check(!soft, [](bool ok) { QCoreApplication::exit(ok ? 0 : 1); });
             return app.exec();
         }
         if (qstrcmp(argv[i], "--settings-shots") == 0 && i + 1 < argc)

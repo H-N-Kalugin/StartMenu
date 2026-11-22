@@ -675,7 +675,7 @@ QWidget* SettingsWindow::buildDataTab()
 
     // ---- Обновления ----
     v->addWidget(section(TXT("Обновления")));
-    auto* updCheck = check(TXT("Проверять обновления раз в день"), &Settings::checkUpdates);
+    auto* updCheck = check(TXT("Проверять обновления автоматически"), &Settings::checkUpdates);
     updCheck->setToolTip(TXT("Меню спрашивает у GitHub номер последней версии. Никакие данные о вас не отправляются."));
     v->addWidget(updCheck);
     auto* updRow = new QHBoxLayout;

@@ -62,7 +62,7 @@ struct Settings
     bool clipboardHistory = false;   // история буфера обмена (кнопка слева, точка — есть новое); включается в мастере
     bool systemMonitor = false;      // ЦП / ОЗУ / ГП / диск в нижней строке меню
     bool showHints = false;          // подсказки клавиш и счётчики групп/плиток
-    bool checkUpdates = true;        // раз в день спрашивать GitHub о новой версии
+    bool checkUpdates = true;        // иногда (раз в пару часов) спрашивать GitHub о новой версии
     QString hiddenUpdate;            // версия, о которой человек попросил больше не напоминать
     int mediaColor = 0;              // цвет плеера (подсветка, полоса, кнопка): 0 — акцент стиля, 1 — из обложки
 
