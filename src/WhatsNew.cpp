@@ -1,6 +1,7 @@
 #include "WhatsNew.h"
 #include "Lang.h"
 #include "Skin.h"
+#include "Shell.h"
 #include "Theme.h"
 
 #include <QDesktopServices>
@@ -37,8 +38,11 @@ QStringList bulletsFor(const QString& version)
 }
 
 WhatsNewCard::WhatsNewCard(QWidget* parent)
-    : QWidget(parent)
+    : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus | Qt::NoDropShadowWindowHint)
 {
+    // Отдельное окно: не режется краями меню, не берёт фокус (меню не закрывается), стекло под карточкой
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_ShowWithoutActivating);
     setMouseTracking(true);
     hide();
 }
@@ -75,6 +79,12 @@ void WhatsNewCard::relayout()
     resize(kWidth, h);
 }
 
+void WhatsNewCard::showEvent(QShowEvent*)
+{
+    WinShell::setAcrylic(this, true, Theme::Rgba::from(Theme::PanelBg.color(), 90).color());
+    WinShell::setRoundCorners(this, true);
+}
+
 void WhatsNewCard::placeIn(const QRect& area)
 {
     move(area.right() - width() - 16, area.bottom() - height() - 16);
@@ -85,10 +95,10 @@ void WhatsNewCard::paintEvent(QPaintEvent*)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     const QRectF r = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-    // Плотная подложка цвета панели (чтобы текст читался поверх плиток) и акцентная рамка
+    // Полупрозрачная подложка цвета панели поверх размытия (стекло) и акцентная рамка
     QColor bg = Theme::PanelBg.color();
-    bg.setAlpha(255);
-    bg = Skin::mix(bg, Theme::TextColor.color(), Theme::Light ? 0.04 : 0.08);
+    bg = Skin::mix(bg, Theme::TextColor.color(), Theme::Light ? 0.04 : 0.06);
+    bg.setAlpha(Theme::Light ? 170 : 150);
     p.setPen(QPen(Theme::Accent.color(), 1.2));
     p.setBrush(bg);
     p.drawRoundedRect(r, 12, 12);

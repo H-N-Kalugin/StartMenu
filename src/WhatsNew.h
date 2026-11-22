@@ -12,13 +12,14 @@ class WhatsNewCard : public QWidget
 public:
     explicit WhatsNewCard(QWidget* parent);
     void setContent(const QString& version, const QStringList& bullets);
-    void placeIn(const QRect& area); // правый нижний угол области (с отступом)
+    void placeIn(const QRect& area); // правый нижний угол области (экранные координаты, с отступом)
 
 signals:
     void dismissed(bool dontShowAgain); // закрыли; true — поставили «Больше не показывать»
 
 protected:
     void paintEvent(QPaintEvent*) override;
+    void showEvent(QShowEvent*) override;
     void mousePressEvent(QMouseEvent* e) override;
     void mouseMoveEvent(QMouseEvent* e) override;
 

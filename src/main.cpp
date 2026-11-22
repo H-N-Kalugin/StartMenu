@@ -37,6 +37,7 @@
 #include "Shell.h"
 #include "StartWindow.h"
 #include "Theme.h"
+#include "WhatsNew.h"
 #include "Welcome.h"
 #include "MediaSession.h"
 #include "Workspace.h"
@@ -783,6 +784,26 @@ int main(int argc, char* argv[])
                 out.write(QStringLiteral("present=%1 app=%2 title=%3 artist=%4 art_bytes=%5")
                               .arg(last.present).arg(QString::fromStdWString(last.app), QString::fromStdWString(last.title),
                                                      QString::fromStdWString(last.artist)).arg(last.art.size()).toUtf8());
+            return 0;
+        }
+        if (qstrcmp(argv[i], "--whatsnew-shot") == 0 && i + 1 < argc)
+        {
+            // Служебное: снимок карточки «Что нового» на тёмном градиенте (стекло в снимке не видно).
+            QApplication app(argc, argv);
+            setupApp(app);
+            Settings::get().load();
+            Lang::load(Settings::get().language);
+            WhatsNewCard card(nullptr);
+            card.setContent(QStringLiteral("1.0.5"), WhatsNew::bulletsFor(QStringLiteral("1.0.5")));
+            QImage img(card.width() + 60, card.height() + 60, QImage::Format_ARGB32_Premultiplied);
+            QLinearGradient gr(0, 0, img.width(), img.height());
+            gr.setColorAt(0, QColor(20, 40, 140));
+            gr.setColorAt(1, QColor(10, 14, 40));
+            QPainter p(&img);
+            p.fillRect(img.rect(), gr);
+            card.render(&p, QPoint(30, 30));
+            p.end();
+            img.save(QString::fromLocal8Bit(argv[i + 1]));
             return 0;
         }
         if (qstrcmp(argv[i], "--file-location") == 0 && i + 2 < argc)

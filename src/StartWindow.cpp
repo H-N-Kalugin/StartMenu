@@ -422,7 +422,7 @@ void StartWindow::maybeShowWhatsNew(bool force)
         });
     }
     m_whatsNew->setContent(cur, bullets);
-    m_whatsNew->placeIn(m_workspace->geometry());
+    m_whatsNew->placeIn(QRect(mapToGlobal(m_workspace->geometry().topLeft()), m_workspace->size()));
     m_whatsNew->show();
     m_whatsNew->raise();
 }
@@ -755,6 +755,9 @@ void StartWindow::moveEvent(QMoveEvent* e)
 {
     QWidget::moveEvent(e);
     syncPlayer();
+
+    if (m_whatsNew && m_whatsNew->isVisible())
+        m_whatsNew->placeIn(QRect(mapToGlobal(m_workspace->geometry().topLeft()), m_workspace->size()));
 }
 
 void StartWindow::showEvent(QShowEvent* e)
@@ -998,7 +1001,7 @@ void StartWindow::resizeEvent(QResizeEvent*)
 void StartWindow::layoutChildren()
 {
     if (m_whatsNew && m_whatsNew->isVisible())
-        m_whatsNew->placeIn(m_workspace->geometry());
+        m_whatsNew->placeIn(QRect(mapToGlobal(m_workspace->geometry().topLeft()), m_workspace->size()));
     m_sidebar->setGeometry(0, 0, Theme::SidebarWidth, height());
     const int left = Theme::SidebarWidth + 10;
     const int contentW = width() - left - Theme::ContentMargin;
