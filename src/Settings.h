@@ -64,9 +64,9 @@ struct Settings
     bool showHints = false;          // подсказки клавиш и счётчики групп/плиток
     // Пункты меню кнопки питания (что показывать)
     bool powerLock = true;           // Блокировка
-    bool powerSignOut = false;       // Выход из системы
+    bool powerSignOut = true;        // Выход из системы
     bool powerSleep = true;          // Спящий режим
-    bool powerHibernate = false;     // Гибернация (если включена в Windows)
+    bool powerHibernate = true;      // Гибернация (если включена в Windows)
     bool powerRestart = true;        // Перезагрузка
     bool powerShutdown = true;       // Завершение работы
     bool checkUpdates = true;        // иногда (раз в пару часов) спрашивать GitHub о новой версии
