@@ -537,6 +537,25 @@ QWidget* SettingsWindow::buildBehaviorTab()
     v->addWidget(check(TXT("Монитор системы внизу меню (ЦП, память, видеокарта, диск)"), &Settings::systemMonitor));
     v->addWidget(check(TXT("Подсказки клавиш и счётчики групп и плиток"), &Settings::showHints));
 
+    // Что показывать в меню кнопки питания
+    v->addSpacing(8);
+    auto* powerTitle = new QLabel(TXT("Меню кнопки питания"));
+    powerTitle->setStyleSheet(QStringLiteral("font-weight: 600;"));
+    v->addWidget(powerTitle);
+    v->addWidget(check(TXT("Блокировка"), &Settings::powerLock));
+    v->addWidget(check(TXT("Выход из системы"), &Settings::powerSignOut));
+    v->addWidget(check(TXT("Спящий режим"), &Settings::powerSleep));
+    auto* hib = check(TXT("Гибернация"), &Settings::powerHibernate);
+    if (!WinShell::hibernateAvailable())
+    {
+        hib->setEnabled(false);
+        hib->setToolTip(TXT("Гибернация выключена в Windows"));
+    }
+    v->addWidget(hib);
+    v->addWidget(check(TXT("Перезагрузка"), &Settings::powerRestart));
+    v->addWidget(check(TXT("Завершение работы"), &Settings::powerShutdown));
+    v->addSpacing(8);
+
     // Чем открывать ссылки на сайты, закреплённые плитками
     auto* browserRow = new QHBoxLayout;
     browserRow->addWidget(new QLabel(TXT("Ссылки на сайты открывать в:")));

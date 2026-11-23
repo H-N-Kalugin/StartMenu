@@ -31,6 +31,7 @@
 #include <tlhelp32.h>
 #include <propkey.h>
 #include <propsys.h>
+#include <powrprof.h>
 #endif
 
 namespace
@@ -800,5 +801,53 @@ bool foregroundIsOurs()
 #else
     return true;
 #endif
+}
+}
+
+namespace WinShell
+{
+// Спящий режим и гибернация требуют права SE_SHUTDOWN_NAME — у обычного пользователя оно есть, но выключено.
+static void enableShutdownPrivilege()
+{
+    HANDLE token = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+        return;
+    TOKEN_PRIVILEGES tp{};
+    if (LookupPrivilegeValueW(nullptr, SE_SHUTDOWN_NAME, &tp.Privileges[0].Luid))
+    {
+        tp.PrivilegeCount = 1;
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+        AdjustTokenPrivileges(token, FALSE, &tp, 0, nullptr, nullptr);
+    }
+    CloseHandle(token);
+}
+
+bool hibernateAvailable()
+{
+    return IsPwrHibernateAllowed() != FALSE;
+}
+
+void power(Power action)
+{
+    switch (action)
+    {
+    case Power::Lock:
+        LockWorkStation();
+        break;
+    case Power::SignOut:
+        ExitWindowsEx(EWX_LOGOFF, SHTDN_REASON_MAJOR_OTHER | SHTDN_REASON_FLAG_PLANNED);
+        break;
+    case Power::Sleep:
+    case Power::Hibernate:
+        enableShutdownPrivilege();
+        SetSuspendState(action == Power::Hibernate ? TRUE : FALSE, FALSE, FALSE);
+        break;
+    case Power::Restart:
+        QProcess::startDetached(QStringLiteral("shutdown"), {QStringLiteral("/r"), QStringLiteral("/t"), QStringLiteral("0")});
+        break;
+    case Power::Shutdown:
+        QProcess::startDetached(QStringLiteral("shutdown"), {QStringLiteral("/s"), QStringLiteral("/t"), QStringLiteral("0")});
+        break;
+    }
 }
 }

@@ -38,6 +38,7 @@
 #include "StartWindow.h"
 #include "Theme.h"
 #include "WhatsNew.h"
+#include "SearchExtras.h"
 #include "Welcome.h"
 #include "MediaSession.h"
 #include "Workspace.h"
@@ -648,6 +649,55 @@ int main(int argc, char* argv[])
             Skin::current().preset(s);
             s.preset = 1;
             s.save();
+            return 0;
+        }
+        if (qstrcmp(argv[i], "--selftest-review") == 0 && i + 1 < argc)
+        {
+            // Служебное (временно): проверка находок ревью на КОПИЯХ файлов в отдельной папке.
+            QApplication app(argc, argv);
+            setupApp(app);
+            const QString dir = app.arguments()[i + 1];
+            QDir().mkpath(dir);
+            QFile out(dir + QStringLiteral("/review.txt"));
+            out.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered);
+            auto log = [&out](const QString& s) { out.write((s + QStringLiteral("\n")).toUtf8()); out.flush(); };
+            auto groupCount = [] { int n = 0; for (const auto& l : Config::instance().layouts()) n += int(l.groups.size()); return n; };
+
+            // 1. Потеря данных: файл на миг не открылся → загрузились пустые → save() затирает файл и .bak
+            const QString real = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/items.json");
+            const QString copy = dir + QStringLiteral("/items.json");
+            QFile::remove(copy);
+            QFile::remove(copy + QStringLiteral(".bak"));
+            QFile::copy(real, copy);
+            Config& c = Config::instance();
+            c.setFileOverride(copy);
+            c.load();
+            log(QStringLiteral("[1] групп в копии: %1, размер %2 байт").arg(groupCount()).arg(QFileInfo(copy).size()));
+            HANDLE h = CreateFileW(reinterpret_cast<LPCWSTR>(copy.utf16()), GENERIC_READ, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+            c.load();
+            log(QStringLiteral("[1] файл занят другим процессом → загружено групп: %1").arg(groupCount()));
+            CloseHandle(h);
+            c.save();
+            log(QStringLiteral("[1] после 1-го save(): items.json %1 байт, .bak %2 байт").arg(QFileInfo(copy).size()).arg(QFileInfo(copy + QStringLiteral(".bak")).size()));
+            c.save();
+            log(QStringLiteral("[1] после 2-го save(): items.json %1 байт, .bak %2 байт").arg(QFileInfo(copy).size()).arg(QFileInfo(copy + QStringLiteral(".bak")).size()));
+
+            // 2. Путь из аргумента через fromLocal8Bit
+            const wchar_t* wide = L"C:\Test\\U0001F600 \u65E5\u672C \u00E9.txt";
+            char ansi[512] = {};
+            WideCharToMultiByte(CP_ACP, 0, wide, -1, ansi, sizeof(ansi), nullptr, nullptr);
+            log(QStringLiteral("[2] настоящий путь: %1").arg(QString::fromWCharArray(wide)));
+            log(QStringLiteral("[2] как его видит --pin: %1").arg(QString::fromLocal8Bit(ansi)));
+
+            // 3. Калькулятор: глубокая рекурсия (последним — может уронить процесс)
+            for (int n : {100, 1000, 5000, 20000, 32767})
+            {
+                log(QStringLiteral("[3] считаю %1 минусов…").arg(n));
+                double r = 0;
+                SearchExtras::calculate(QString(n, QLatin1Char('-')) + QStringLiteral("1"), r);
+                log(QStringLiteral("[3] %1 минусов — без падения").arg(n));
+            }
+            log(QStringLiteral("[done]"));
             return 0;
         }
         if (qstrcmp(argv[i], "--selftest-loose") == 0 && i + 2 < argc)

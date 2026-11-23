@@ -13,6 +13,10 @@ namespace WinShell
     void open(const QString& target);              // ms-settings:, папка, URL
     void showInFolder(const QString& path);
     void openRunDialog();
+    // Питание
+    enum class Power { Lock, SignOut, Sleep, Hibernate, Restart, Shutdown };
+    void power(Power action);
+    bool hibernateAvailable();                     // гибернация включена в Windows
     bool isLocalFile(const QString& path);         // false для shell:AppsFolder\... и несуществующих путей
     QString mediaSourcePath(const QString& appId); // источник звука (SourceAppUserModelId) → путь, из которого грузится значок; пусто — не нашли
     QString fileLocation(const Item& item);        // настоящий файл или папка программы (для «Открыть расположение файла»); пусто — не найти

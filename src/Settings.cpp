@@ -122,6 +122,12 @@ void Settings::load()
     systemMonitor = o["systemMonitor"].toBool(systemMonitor);
     theme = std::clamp(o["theme"].toInt(theme), 0, 2);
     showHints = o["showHints"].toBool(showHints);
+    powerLock = o["powerLock"].toBool(powerLock);
+    powerSignOut = o["powerSignOut"].toBool(powerSignOut);
+    powerSleep = o["powerSleep"].toBool(powerSleep);
+    powerHibernate = o["powerHibernate"].toBool(powerHibernate);
+    powerRestart = o["powerRestart"].toBool(powerRestart);
+    powerShutdown = o["powerShutdown"].toBool(powerShutdown);
     checkUpdates = o["checkUpdates"].toBool(checkUpdates);
     hiddenUpdate = o["hiddenUpdate"].toString();
     lastSeenVersion = o["lastSeenVersion"].toString();
@@ -159,6 +165,12 @@ void Settings::save() const
     o["linkBrowser"] = linkBrowser;
     o["systemMonitor"] = systemMonitor;
     o["showHints"] = showHints;
+    o["powerLock"] = powerLock;
+    o["powerSignOut"] = powerSignOut;
+    o["powerSleep"] = powerSleep;
+    o["powerHibernate"] = powerHibernate;
+    o["powerRestart"] = powerRestart;
+    o["powerShutdown"] = powerShutdown;
     o["theme"] = theme;
     o["checkUpdates"] = checkUpdates;
     o["hiddenUpdate"] = hiddenUpdate;

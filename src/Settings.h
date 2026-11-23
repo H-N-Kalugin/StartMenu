@@ -62,6 +62,13 @@ struct Settings
     bool clipboardHistory = false;   // история буфера обмена (кнопка слева, точка — есть новое); включается в мастере
     bool systemMonitor = false;      // ЦП / ОЗУ / ГП / диск в нижней строке меню
     bool showHints = false;          // подсказки клавиш и счётчики групп/плиток
+    // Пункты меню кнопки питания (что показывать)
+    bool powerLock = true;           // Блокировка
+    bool powerSignOut = false;       // Выход из системы
+    bool powerSleep = true;          // Спящий режим
+    bool powerHibernate = false;     // Гибернация (если включена в Windows)
+    bool powerRestart = true;        // Перезагрузка
+    bool powerShutdown = true;       // Завершение работы
     bool checkUpdates = true;        // иногда (раз в пару часов) спрашивать GitHub о новой версии
     QString hiddenUpdate;            // версия, о которой человек попросил больше не напоминать
     QString lastSeenVersion;         // версия, для которой человек уже видел карточку «Что нового»

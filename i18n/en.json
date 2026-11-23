@@ -457,5 +457,11 @@
 "455": "Switches instead of checkboxes: On | Off in settings and the wizard",
 "456": "Width and alignment of free shortcuts by mouse: drag on the empty part of the block",
 "457": "The version number is always clickable: check, hide the notice, auto-update",
-"458": "The first-run wizard lets you pick tiles with or without labels"
+"458": "The first-run wizard lets you pick tiles with or without labels",
+"459": "Power button menu",
+"460": "Lock",
+"461": "Sign out",
+"462": "Sleep",
+"463": "Hibernate",
+"464": "Hibernation is turned off in Windows"
 }

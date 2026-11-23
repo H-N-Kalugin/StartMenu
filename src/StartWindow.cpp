@@ -1631,8 +1631,32 @@ void StartWindow::powerMenu(const QPoint& globalPos)
 {
     setBusy(true);
     QMenu menu(this);
-    QAction* restart = menu.addAction(TXT("Перезагрузка"));
-    QAction* shutdown = menu.addAction(TXT("Завершение работы"));
+    // Пункты — те, что выбраны в настройках («Поведение» → «Меню кнопки питания»), в порядке как в Windows
+    const Settings& st = Settings::get();
+    using P = WinShell::Power;
+    struct Entry { bool on; const QString text; P action; };
+    const Entry entries[] = {
+        {st.powerLock, TXT("Блокировка"), P::Lock},
+        {st.powerSignOut, TXT("Выход из системы"), P::SignOut},
+        {st.powerSleep, TXT("Спящий режим"), P::Sleep},
+        {st.powerHibernate && WinShell::hibernateAvailable(), TXT("Гибернация"), P::Hibernate},
+        {st.powerRestart, TXT("Перезагрузка"), P::Restart},
+        {st.powerShutdown, TXT("Завершение работы"), P::Shutdown},
+    };
+    int prevBlock = -1;
+    for (const Entry& e : entries)
+    {
+        if (!e.on)
+            continue;
+        // Разделители между блоками: сеанс | сон | выключение
+        const int block = e.action <= P::SignOut ? 0 : e.action <= P::Hibernate ? 1 : 2;
+        if (prevBlock >= 0 && block != prevBlock)
+            menu.addSeparator();
+        prevBlock = block;
+        menu.addAction(e.text)->setData(int(e.action));
+    }
+    if (menu.isEmpty()) // всё выключили — хотя бы «Завершение работы»
+        menu.addAction(TXT("Завершение работы"))->setData(int(P::Shutdown));
 
     // Меню справа от кнопки, нижним краем на уровне кнопки.
     const QSize sz = menu.sizeHint();
@@ -1642,10 +1666,9 @@ void StartWindow::powerMenu(const QPoint& globalPos)
         return;
 
     close();
-    if (chosen == restart)
-        QProcess::startDetached(QStringLiteral("shutdown"), {QStringLiteral("/r"), QStringLiteral("/t"), QStringLiteral("0")});
-    else if (chosen == shutdown)
-        QProcess::startDetached(QStringLiteral("shutdown"), {QStringLiteral("/s"), QStringLiteral("/t"), QStringLiteral("0")});
+    const auto action = WinShell::Power(chosen->data().toInt());
+    // Чуть позже: меню успевает скрыться, прежде чем экран погаснет или заблокируется
+    QTimer::singleShot(250, [action] { WinShell::power(action); });
 }
 
 void StartWindow::setBusy(bool busy)
