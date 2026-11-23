@@ -463,5 +463,9 @@
 "461": "Oturumu kapat",
 "462": "Uyku",
 "463": "Hazırda beklet",
-"464": "Hazırda bekletme Windows'ta kapalı"
+"464": "Hazırda bekletme Windows'ta kapalı",
+"465": "Güç düğmesi menüsü: kilitle, oturumu kapat, uyku, hazırda beklet, yeniden başlat ve kapat",
+"466": "Gereksiz öğeleri gizleyin: “Ayarlar” → “Davranış” → “Güç düğmesi menüsü”",
+"467": "Güncellemeler kurulumdan önce sağlama toplamıyla doğrulanır",
+"468": "Başka bir program dosyayı kısa süre kilitlese de kutucuklar ve ayarlar artık kaybolmaz"
 }

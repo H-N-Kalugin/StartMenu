@@ -463,5 +463,9 @@
 "461": "Sair",
 "462": "Suspender",
 "463": "Hibernar",
-"464": "A hibernação está desativada no Windows"
+"464": "A hibernação está desativada no Windows",
+"465": "Menu do botão de energia: bloquear, sair, suspender, hibernar, reiniciar e desligar",
+"466": "Oculte o que não precisa: «Configurações» → «Comportamento» → «Menu do botão de energia»",
+"467": "As atualizações são verificadas por checksum antes da instalação",
+"468": "Blocos e configurações não se perdem mais se outro programa bloquear o arquivo por um instante"
 }

@@ -463,5 +463,9 @@
 "461": "Cerrar sesión",
 "462": "Suspender",
 "463": "Hibernar",
-"464": "La hibernación está desactivada en Windows"
+"464": "La hibernación está desactivada en Windows",
+"465": "Menú del botón de encendido: bloquear, cerrar sesión, suspender, hibernar, reiniciar y apagar",
+"466": "Oculta lo que no necesites: «Configuración» → «Comportamiento» → «Menú del botón de encendido»",
+"467": "Las actualizaciones se verifican con suma de comprobación antes de instalarse",
+"468": "Los mosaicos y ajustes ya no se pierden si otro programa bloquea el archivo un instante"
 }

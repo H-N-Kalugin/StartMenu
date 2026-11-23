@@ -463,5 +463,9 @@
 "461": "Disconnetti",
 "462": "Sospendi",
 "463": "Iberna",
-"464": "L'ibernazione è disattivata in Windows"
+"464": "L'ibernazione è disattivata in Windows",
+"465": "Menu del pulsante di alimentazione: blocca, disconnetti, sospendi, iberna, riavvia e arresta",
+"466": "Nascondi le voci che non servono: «Impostazioni» → «Comportamento» → «Menu del pulsante di alimentazione»",
+"467": "Gli aggiornamenti vengono verificati con checksum prima dell'installazione",
+"468": "Riquadri e impostazioni non si perdono più se un altro programma blocca il file per un attimo"
 }
