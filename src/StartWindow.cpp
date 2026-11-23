@@ -54,6 +54,8 @@
 #include <QSet>
 #include <QThread>
 #include <QTimer>
+#include <QLabel>
+#include <QWidgetAction>
 #include <QVariantAnimation>
 #include <algorithm>
 
@@ -459,8 +461,15 @@ void StartWindow::updateMenu()
     const auto info = Updater::available();
     setBusy(true);
     QMenu menu(this);
-    QAction* title = menu.addAction(TXT("Версия %1").arg(Updater::currentVersion()));
+    // Заголовок — просто надпись (не пункт): какая версия стоит сейчас
+    auto* titleLabel = new QLabel(TXT("Установлена версия StartMenu %1").arg(Updater::currentVersion()));
+    QColor sub = Theme::SubText.color();
+    titleLabel->setStyleSheet(QStringLiteral("QLabel { color: %1; padding: 6px 14px 4px 14px; font-size: 12px; }").arg(sub.name()));
+    auto* title = new QWidgetAction(&menu);
+    title->setDefaultWidget(titleLabel);
     title->setEnabled(false);
+    menu.addAction(title);
+    menu.addSeparator();
     QAction* upd = info ? menu.addAction(TXT("Обновить до версии %1").arg(info->version)) : nullptr;
     QAction* hide = (info && m_updateNew) ? menu.addAction(TXT("Скрыть уведомление")) : nullptr;
     QAction* check = menu.addAction(TXT("Проверить сейчас"));
@@ -479,6 +488,17 @@ void StartWindow::updateMenu()
     QAction* whatsNew = toggle(TXT("Показывать «Что нового»"), st.showWhatsNew);
     const QRect r = updateRect();
     const QSize sz = menu.sizeHint();
+    // Пока меню открыто — свежая проверка в фоне, чтобы надпись и кружок знали о самой новой версии
+    {
+        QPointer<StartWindow> self(this);
+        Updater::check(true, [self](bool) {
+            if (self)
+            {
+                self->refreshUpdate();
+                self->update();
+            }
+        });
+    }
     QAction* chosen = menu.exec(mapToGlobal(QPoint(r.right() - sz.width(), r.top() - sz.height() - 4)));
     setBusy(false);
     if (!chosen)

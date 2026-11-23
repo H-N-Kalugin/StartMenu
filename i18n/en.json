@@ -467,5 +467,6 @@
 "465": "Power button menu: lock, sign out, sleep, hibernate, restart and shut down",
 "466": "Hide the items you don't need: “Settings” → “Behavior” → “Power button menu”",
 "467": "Updates are verified by checksum before installing",
-"468": "Tiles and settings are no longer lost if another program briefly locks the file"
+"468": "Tiles and settings are no longer lost if another program briefly locks the file",
+"469": "Installed: StartMenu %1"
 }

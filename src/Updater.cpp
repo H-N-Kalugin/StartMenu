@@ -200,7 +200,20 @@ bool userIsFree()
     return FAILED(SHQueryUserNotificationState(&st)) || st == QUNS_ACCEPTS_NOTIFICATIONS;
 }
 
+static void installNow(const Info& info, std::function<void(bool)> done, bool quiet);
+
+// Перед установкой — свежая проверка: если за это время вышло ещё несколько версий, ставим самую новую,
+// а не ту, что была записана при прошлой проверке.
 void install(const Info& info, std::function<void(bool)> done, bool quiet)
+{
+    check(true, [info, done, quiet](bool) {
+        const auto latest = available();
+        const Info use = (latest && parse(latest->version) >= parse(info.version)) ? *latest : info;
+        installNow(use, done, quiet);
+    });
+}
+
+static void installNow(const Info& info, std::function<void(bool)> done, bool quiet)
 {
     const QString page = info.page;
     // Ставим только установщик из выпусков нашего репозитория и только с известной контрольной суммой

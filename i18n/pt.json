@@ -467,5 +467,6 @@
 "465": "Menu do botão de energia: bloquear, sair, suspender, hibernar, reiniciar e desligar",
 "466": "Oculte o que não precisa: «Configurações» → «Comportamento» → «Menu do botão de energia»",
 "467": "As atualizações são verificadas por checksum antes da instalação",
-"468": "Blocos e configurações não se perdem mais se outro programa bloquear o arquivo por um instante"
+"468": "Blocos e configurações não se perdem mais se outro programa bloquear o arquivo por um instante",
+"469": "Instalado: StartMenu %1"
 }
