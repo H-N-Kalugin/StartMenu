@@ -95,7 +95,14 @@ bool Settings::restoreStyle(int newSkin)
 void Settings::load()
 {
     *this = Settings(); // всё, чего нет в файле, — по умолчанию
-    const QJsonObject o = readJsonFile(filePath());
+    bool ok = true;
+    QJsonObject o = readJsonFile(filePath(), &ok);
+    if (!ok)
+    {
+        bool bakOk = true;
+        o = readJsonFile(filePath() + QStringLiteral(".bak"), &bakOk);
+        loadFailed = !bakOk || o.isEmpty();
+    }
 
     skin = std::clamp(o["skin"].toInt(skin), 0, 3);
     language = o["language"].toString(language);
@@ -139,6 +146,8 @@ void Settings::load()
 
 void Settings::save() const
 {
+    if (loadFailed)
+        return; // настройки не прочитались — не затираем их значениями по умолчанию
     // Вид текущего стиля запоминаем отдельно — при возврате к этому стилю он восстановится.
     styles[QString::number(skin)] = lookJson();
     QJsonObject o = lookJson();

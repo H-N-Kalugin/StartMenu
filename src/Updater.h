@@ -12,6 +12,7 @@ struct Info
     QString version;   // «1.0.1»
     QString page;      // страница выпуска на GitHub
     QString installer; // прямая ссылка на установщик .exe (может быть пустой)
+    QString sha256;    // контрольная сумма установщика от GitHub (hex); без неё ставить не будем
 };
 
 QString currentVersion();

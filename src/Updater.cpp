@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QCryptographicHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -104,7 +105,8 @@ std::optional<Info> available()
         const QJsonObject o = readState();
         const QString v = o.value(QStringLiteral("version")).toString();
         if (!v.isEmpty() && parse(v) > parse(currentVersion()))
-            cached = Info{v, o.value(QStringLiteral("page")).toString(), o.value(QStringLiteral("installer")).toString()};
+            cached = Info{v, o.value(QStringLiteral("page")).toString(), o.value(QStringLiteral("installer")).toString(),
+                          o.value(QStringLiteral("sha256")).toString()};
     }
     return cached;
 }
@@ -174,6 +176,10 @@ void check(bool force, std::function<void(bool)> done)
                 if (ao.value(QStringLiteral("name")).toString().endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive))
                 {
                     state["installer"] = ao.value(QStringLiteral("browser_download_url")).toString();
+                    // GitHub сам считает SHA-256 каждого файла выпуска: «sha256:<hex>»
+                    const QString digest = ao.value(QStringLiteral("digest")).toString();
+                    if (digest.startsWith(QStringLiteral("sha256:")))
+                        state["sha256"] = digest.mid(7).toLower();
                     break;
                 }
             }
@@ -197,20 +203,38 @@ bool userIsFree()
 void install(const Info& info, std::function<void(bool)> done, bool quiet)
 {
     const QString page = info.page;
-    if (info.installer.isEmpty() || !info.installer.startsWith(QStringLiteral("https://github.com/")))
+    // Ставим только установщик из выпусков нашего репозитория и только с известной контрольной суммой
+    static const QString kReleases = QStringLiteral("https://github.com/NKF-XXX/StartMenu/releases/download/");
+    if (info.installer.isEmpty() || !info.installer.startsWith(kReleases) || info.sha256.size() != 64)
     {
         QDesktopServices::openUrl(QUrl(page));
         onMain(done, false);
         return;
     }
-    const QString url = info.installer, version = info.version;
-    QThreadPool::globalInstance()->start([url, version, page, done, quiet] {
-        const QString exe = QDir::tempPath() + QStringLiteral("/StartMenu-%1-setup.exe").arg(version);
+    const QString url = info.installer, version = info.version, sha = info.sha256;
+    QThreadPool::globalInstance()->start([url, version, sha, page, done, quiet] {
+        // Своя папка в профиле, а не общий %TEMP%: туда никто посторонний файл не подложит
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral("/StartMenu/update");
+        QDir().mkpath(dir);
+        const QString exe = dir + QStringLiteral("/StartMenu-%1-setup.exe").arg(version);
         QFile::remove(exe);
+        auto verified = [&exe, &sha] {
+            QFile f(exe);
+            if (!f.open(QIODevice::ReadOnly))
+                return false;
+            QCryptographicHash h(QCryptographicHash::Sha256);
+            if (!h.addData(&f))
+                return false;
+            f.close();
+            if (QString::fromLatin1(h.result().toHex()) == sha)
+                return true;
+            QFile::remove(exe); // файл не тот, что выложен в выпуске, — не запускаем
+            return false;
+        };
         // Установщик читает STARTMENU_QUIET из окружения — без окон и сообщений; запущенный процесс унаследует переменную
         if (quiet)
             SetEnvironmentVariableW(L"STARTMENU_QUIET", L"1");
-        const bool ok = download(url, exe)
+        const bool ok = download(url, exe) && verified()
                         && reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", reinterpret_cast<LPCWSTR>(QDir::toNativeSeparators(exe).utf16()),
                                                                    nullptr, nullptr, SW_SHOWNORMAL)) > 32;
         if (quiet)

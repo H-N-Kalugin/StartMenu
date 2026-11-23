@@ -81,6 +81,7 @@ struct Settings
     mutable QJsonObject styles;
 
     static Settings& get();
+    bool loadFailed = false; // settings.json не прочитался — сохранять поверх нельзя
     void load();
     void save() const;
     void apply() const;

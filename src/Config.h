@@ -72,7 +72,8 @@ private:
 };
 
 // Чтение JSON без потери данных: битый файл копируется в «имя.broken-<время>», а не затирается при следующей записи.
-QJsonObject readJsonFile(const QString& path);
+// ok = false — файл есть, но прочитать его не удалось (занят антивирусом и т.п.): тогда сохранять поверх нельзя.
+QJsonObject readJsonFile(const QString& path, bool* ok = nullptr);
 // Перед перезаписью — копия «имя.bak» (одна, последняя).
 void keepBackup(const QString& path);
 
@@ -128,4 +129,5 @@ private:
     QStringList m_startSeen;
     qint64 m_startStamp = 0;   // 0 — ещё ни разу не синхронизировали
     QString m_fileOverride;
+    bool m_loadFailed = false; // items.json не прочитался — не сохраняем, чтобы не затереть плитки пустыми
 };

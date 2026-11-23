@@ -1106,9 +1106,11 @@ void Workspace::paintEvent(QPaintEvent* e)
     const QRect visible = e->rect().translated(m_scrollX, m_scrollY).adjusted(-20, -20, 20, 20);
     for (int g = 0; g < groups.size(); ++g)
     {
+        if (g >= m_geo.size()) // раскладка ещё не пересчитана под новые группы (например, после фоновой синхронизации)
+            break;
         const Group& gr = groups[g];
         const GroupGeo& geo = m_geo[g];
-        if (g < m_geo.size() && !geo.frame.adjusted(-16, -16, 16, 16).intersects(visible))
+        if (!geo.frame.adjusted(-16, -16, 16, 16).intersects(visible))
             continue;
         const bool groupHover = (m_hover.g == g && !dragging && !folderOpen() && m_hover.kind != Hit::None
                                  && m_hover.kind != Hit::FolderItem);

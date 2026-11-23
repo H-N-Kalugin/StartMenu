@@ -61,8 +61,25 @@ namespace
                 else return v;
             }
         }
+        // Глубина рекурсии: «------1» или «((((…» длиной в десятки тысяч символов иначе переполняют стек
+        struct Depth
+        {
+            int& d;
+            explicit Depth(int& v) : d(v) { ++d; }
+            ~Depth() { --d; }
+        };
+        bool tooDeep()
+        {
+            if (m_depth <= 200)
+                return false;
+            m_ok = false;
+            m_pos = int(m_s.size()); // дальше не разбираем
+            return true;
+        }
         double power()
         {
+            const Depth guard(m_depth);
+            if (tooDeep()) return 0;
             const double base = unary();
             if (take('^'))
                 return std::pow(base, power()); // степень — справа налево
@@ -70,6 +87,8 @@ namespace
         }
         double unary()
         {
+            const Depth guard(m_depth);
+            if (tooDeep()) return 0;
             if (take('-')) return -unary();
             if (take('+')) return unary();
             return primary();
@@ -78,6 +97,8 @@ namespace
         {
             if (take('('))
             {
+                const Depth guard(m_depth);
+                if (tooDeep()) return 0;
                 const double v = expr();
                 if (!take(')'))
                     m_ok = false;
@@ -102,6 +123,7 @@ namespace
         QString m_s;
         int m_pos = 0;
         bool m_ok = true;
+        int m_depth = 0;
     };
 
     // Иконка для страниц «Параметров» — иконка самого приложения «Параметры».

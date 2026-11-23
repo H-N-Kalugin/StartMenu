@@ -211,12 +211,27 @@ FileLock::~FileLock()
 #endif
 }
 
-QJsonObject readJsonFile(const QString& path)
+QJsonObject readJsonFile(const QString& path, bool* ok)
 {
+    if (ok)
+        *ok = true;
     const FileLock lock; // не читать, пока другой процесс подменяет файл
     QFile f(path);
-    if (!f.open(QIODevice::ReadOnly))
+    if (!f.exists())
+        return {}; // файла ещё нет — это нормально, будут значения по умолчанию
+    // Антивирус или синхронизация может держать файл долю секунды — пробуем ещё немного
+    bool opened = f.open(QIODevice::ReadOnly);
+    for (int attempt = 0; !opened && attempt < 10; ++attempt)
+    {
+        Sleep(50);
+        opened = f.open(QIODevice::ReadOnly);
+    }
+    if (!opened)
+    {
+        if (ok)
+            *ok = false;
         return {};
+    }
     const QByteArray data = f.readAll();
     f.close();
     QJsonParseError err;
@@ -309,7 +324,16 @@ void Config::load()
     m_active = 0;
     m_sidebar.clear();
 
-    const QJsonObject root = readJsonFile(filePath());
+    bool ok = true;
+    QJsonObject root = readJsonFile(filePath(), &ok);
+    m_loadFailed = false;
+    if (!ok)
+    {
+        // Основной файл не открылся — берём запасную копию; если и она не читается, ничего не сохраняем
+        bool bakOk = true;
+        root = readJsonFile(filePath() + QStringLiteral(".bak"), &bakOk);
+        m_loadFailed = !bakOk || root.isEmpty();
+    }
 
     if (root.contains("layouts"))
     {
@@ -376,6 +400,8 @@ void Config::save() const
     for (const Item& it : m_sidebar)
         sidebar.append(itemToJson(it));
 
+    if (m_loadFailed)
+        return; // загрузили пустоту из-за занятого файла — не затираем настоящие плитки
     // QSaveFile пишет во временный файл и подменяет — при сбое старый items.json не испортится.
     const FileLock lock;
     keepBackup(filePath());

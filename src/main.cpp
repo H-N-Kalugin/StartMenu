@@ -46,6 +46,7 @@
 #include "Updater.h"
 
 #include <windows.h>
+#include <shellapi.h>
 #include <malloc.h>
 
 // Два режима одного exe:
@@ -623,6 +624,24 @@ namespace
     }
 }
 
+// Аргумент командной строки в Юникоде. argv[] — в кодировке ANSI: «日本» превращается в «??»
+// и файлы с такими именами не закрепить из Проводника. Берём настоящую строку у Windows.
+static QString wideArg(int index)
+{
+    static const QStringList args = [] {
+        QStringList out;
+        int n = 0;
+        if (LPWSTR* w = CommandLineToArgvW(GetCommandLineW(), &n))
+        {
+            for (int k = 0; k < n; ++k)
+                out.append(QString::fromWCharArray(w[k]));
+            LocalFree(w);
+        }
+        return out;
+    }();
+    return index >= 0 && index < args.size() ? args[index] : QString();
+}
+
 int main(int argc, char* argv[])
 {
     for (int i = 1; i < argc; ++i)
@@ -635,7 +654,7 @@ int main(int argc, char* argv[])
         {
             // Служебное: сохранить иконку программы в .ico (она встраивается в exe через app.rc).
             QGuiApplication app(argc, argv);
-            return AppIcon::writeIco(QString::fromLocal8Bit(argv[i + 1])) ? 0 : 1;
+            return AppIcon::writeIco(wideArg(i + 1)) ? 0 : 1;
         }
         if (qstrcmp(argv[i], "--apply-skin") == 0 && i + 1 < argc)
         {
@@ -682,12 +701,8 @@ int main(int argc, char* argv[])
             c.save();
             log(QStringLiteral("[1] после 2-го save(): items.json %1 байт, .bak %2 байт").arg(QFileInfo(copy).size()).arg(QFileInfo(copy + QStringLiteral(".bak")).size()));
 
-            // 2. Путь из аргумента через fromLocal8Bit
-            const wchar_t* wide = L"C:\Test\\U0001F600 \u65E5\u672C \u00E9.txt";
-            char ansi[512] = {};
-            WideCharToMultiByte(CP_ACP, 0, wide, -1, ansi, sizeof(ansi), nullptr, nullptr);
-            log(QStringLiteral("[2] настоящий путь: %1").arg(QString::fromWCharArray(wide)));
-            log(QStringLiteral("[2] как его видит --pin: %1").arg(QString::fromLocal8Bit(ansi)));
+            // 2. Юникод в аргументах: третий аргумент — путь с «日本 é»
+            log(QStringLiteral("[2] аргумент как его видит --pin: %1").arg(wideArg(i + 2)));
 
             // 3. Калькулятор: глубокая рекурсия (последним — может уронить процесс)
             for (int n : {100, 1000, 5000, 20000, 32767})
@@ -708,7 +723,7 @@ int main(int argc, char* argv[])
             setupApp(app);
             Settings::get().load();
             Lang::load(QStringLiteral("en"));
-            Config::instance().setFileOverride(QString::fromLocal8Bit(argv[i + 1]));
+            Config::instance().setFileOverride(wideArg(i + 1));
             Config::instance().load();
             IconCache icons;
             Workspace w(&icons);
@@ -748,7 +763,7 @@ int main(int argc, char* argv[])
             const auto& gs = Config::instance().groups();
             drag(int(gs.size()) - 1, 0, QPoint(950, 460)); // из последнего блока на пустое место справа
             summary(QStringLiteral("last block tile -> empty space right"));
-            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            QFile out(wideArg(i + 2));
             if (out.open(QIODevice::WriteOnly | QIODevice::Text))
                 out.write(log.join(QLatin1Char('\n')).toUtf8());
             return 0;
@@ -761,7 +776,7 @@ int main(int argc, char* argv[])
             setupApp(app);
             Settings::get().load();
             Lang::load(QStringLiteral("en"));
-            Config::instance().setFileOverride(QString::fromLocal8Bit(argv[i + 1]));
+            Config::instance().setFileOverride(wideArg(i + 1));
             Config::instance().load();
             IconCache icons;
             Workspace w(&icons);
@@ -812,7 +827,7 @@ int main(int argc, char* argv[])
                 drag(QPoint(fr.right() - 40, y), QPoint(fr.center().x(), y)); // нажали на пустом, довели до середины
                 state(QStringLiteral("press in the empty right area, drag to the middle"));
             }
-            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            QFile out(wideArg(i + 2));
             if (out.open(QIODevice::WriteOnly | QIODevice::Text))
                 out.write(log.join(QLatin1Char('\n')).toUtf8());
             return 0;
@@ -829,7 +844,7 @@ int main(int argc, char* argv[])
             });
             QThread::msleep(3500);
             std::lock_guard<std::mutex> lock(mu);
-            QFile out(QString::fromLocal8Bit(argv[i + 1]));
+            QFile out(wideArg(i + 1));
             if (out.open(QIODevice::WriteOnly | QIODevice::Text))
                 out.write(QStringLiteral("present=%1 app=%2 title=%3 artist=%4 art_bytes=%5")
                               .arg(last.present).arg(QString::fromStdWString(last.app), QString::fromStdWString(last.title),
@@ -853,7 +868,7 @@ int main(int argc, char* argv[])
             p.fillRect(img.rect(), gr);
             card.render(&p, QPoint(30, 30));
             p.end();
-            img.save(QString::fromLocal8Bit(argv[i + 1]));
+            img.save(wideArg(i + 1));
             return 0;
         }
         if (qstrcmp(argv[i], "--file-location") == 0 && i + 2 < argc)
@@ -861,8 +876,8 @@ int main(int argc, char* argv[])
             // Служебное: где лежит файл у пункта меню. --file-location <путь пункта> <файл-результат>
             QApplication app(argc, argv); // с графическим приложением инициализируется COM, как в самом меню
             Item it;
-            it.path = QString::fromLocal8Bit(argv[i + 1]);
-            QFile out(QString::fromLocal8Bit(argv[i + 2]));
+            it.path = wideArg(i + 1);
+            QFile out(wideArg(i + 2));
             if (out.open(QIODevice::WriteOnly | QIODevice::Text))
                 out.write(WinShell::fileLocation(it).toUtf8());
             return 0;
@@ -899,7 +914,7 @@ int main(int argc, char* argv[])
             Settings::get().load();
             const int li = int(app.arguments().indexOf(QStringLiteral("--lang")));
             Lang::load(li >= 0 && li + 1 < app.arguments().size() ? app.arguments()[li + 1] : Settings::get().language);
-            const QString dir = QString::fromLocal8Bit(argv[i + 1]);
+            const QString dir = wideArg(i + 1);
             QDir().mkpath(dir);
             SettingsWindow w;
             w.resize(w.sizeHint().expandedTo(QSize(720, 640)));
@@ -1059,13 +1074,13 @@ int main(int argc, char* argv[])
             wait.exec();
             const QImage shot = w.renderWithPlayer();
             if (app.arguments().contains(QStringLiteral("--transparent")))
-                return shot.save(QString::fromLocal8Bit(argv[i + 1])) ? 0 : 1; // с прозрачностью: стекло и просвет между плеером и меню
+                return shot.save(wideArg(i + 1)) ? 0 : 1; // с прозрачностью: стекло и просвет между плеером и меню
             QImage out(shot.size(), QImage::Format_ARGB32_Premultiplied);
             out.fill(QColor(32, 34, 40)); // вместо рабочего стола под окном
             QPainter p(&out);
             p.drawImage(0, 0, shot);
             p.end();
-            return out.save(QString::fromLocal8Bit(argv[i + 1])) ? 0 : 1;
+            return out.save(wideArg(i + 1)) ? 0 : 1;
         }
         if (qstrcmp(argv[i], "--explorer-verb") == 0 && i + 1 < argc)
         {
@@ -1085,7 +1100,7 @@ int main(int argc, char* argv[])
             {
                 const FileLock lock; // прочитать-добавить-записать одним куском
                 Config::instance().load();
-                pinned = PinSync::pinPath(QString::fromLocal8Bit(argv[i + 1]));
+                pinned = PinSync::pinPath(wideArg(i + 1));
                 if (pinned)
                     Config::instance().save();
             }
@@ -1105,7 +1120,7 @@ int main(int argc, char* argv[])
             QApplication app(argc, argv);
             setupApp(app);
             Config::instance().load();
-            const QString dir = QString::fromLocal8Bit(argv[i + 1]);
+            const QString dir = wideArg(i + 1);
             QDir().mkpath(dir);
             for (const Group& g : Config::instance().groups())
                 for (const Tab& tab : g.tabs)
