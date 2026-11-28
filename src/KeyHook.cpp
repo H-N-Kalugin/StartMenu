@@ -132,6 +132,11 @@ namespace
         RECT r = {};
         if (!bar || !IsWindowVisible(bar) || !GetWindowRect(bar, &r) || !PtInRect(&r, pt))
             return false;
+        // Над игрой в окне на весь экран панель задач «видима», но лежит ПОД игрой: клик достаётся игре.
+        // Считаем клик нашим, только если под курсором действительно сама панель задач.
+        HWND hit = WindowFromPoint(pt);
+        if (!hit || GetAncestor(hit, GA_ROOT) != bar)
+            return false;
         MONITORINFO mi = {sizeof(mi)};
         if (!GetMonitorInfoW(MonitorFromWindow(bar, MONITOR_DEFAULTTONEAREST), &mi))
             return false;
