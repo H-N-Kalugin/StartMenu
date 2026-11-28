@@ -136,6 +136,7 @@ private:
     int m_busy = 0;            // открыто контекстное меню/диалог — не закрываемся
     bool m_wasActive = false;
     quintptr m_prevForeground = 0;
+    QRect m_taskbarRaisedOn; // меню открывалось над игрой на весь экран: на этом мониторе панель задач подняли
     QElapsedTimer m_openedAt;   // сколько прошло с открытия (первые 0,6 с фокус забираем обратно)
     int m_regrabs = 0;
     bool m_firstPaintLogged = false;

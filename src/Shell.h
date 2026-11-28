@@ -35,6 +35,7 @@ namespace WinShell
     QString locationOf(const Item& item);          // куда ведёт плитка: цель ярлыка, путь программы и т.п.
     bool raiseTaskbar(const QRect& onScreen);     // над игрой на весь экран: показать панель задач (true — это была игра)
     void keepTaskbarAbove(const QRect& onScreen); // держать панель задач поверх игры, пока открыто меню
+    bool lowerTaskbar(const QRect& onScreen);     // меню закрыто и снова активна игра на весь экран — убрать панель под неё
     void startSelf(const QString& arg);
     void startSelf(const QStringList& args);            // запустить StartMenu.exe с ключом (--settings, --menu …)
 

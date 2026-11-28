@@ -801,6 +801,17 @@ void StartWindow::hideEvent(QHideEvent* e)
     m_media->setWindowShown(false);
     if (m_view == View::Clipboard)
         setView(View::Tiles); // в следующий раз меню открывается с плиток
+    if (!m_taskbarRaisedOn.isNull())
+    {
+        // Над игрой поднимали панель задач — после закрытия возвращаем её под игру (фокус возвращается не сразу)
+        const QRect scr = m_taskbarRaisedOn;
+        m_taskbarRaisedOn = QRect();
+        for (int ms : {50, 250, 700})
+            QTimer::singleShot(ms, this, [this, scr] {
+                if (!isVisible())
+                    WinShell::lowerTaskbar(scr);
+            });
+    }
 }
 
 QImage StartWindow::renderWithPlayer()
@@ -880,6 +891,7 @@ void StartWindow::popup()
     m_focusTimer->start();
     m_openedAt.start();
     m_regrabs = 0;
+    m_taskbarRaisedOn = overFullscreen ? screenRect : QRect();
     if (overFullscreen)
     {
         // Проводник прячет панель, когда фокус уходит с неё на меню, — возвращаем её поверх игры несколько раз

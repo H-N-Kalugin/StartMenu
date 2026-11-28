@@ -595,6 +595,37 @@ void keepTaskbarAbove(const QRect& onScreen)
     }, reinterpret_cast<LPARAM>(&screen));
 }
 
+bool lowerTaskbar(const QRect& onScreen)
+{
+    // Пока меню было открыто, панель задач стояла «поверх всех». Сама она обратно не уходит, и над игрой
+    // в окне на весь экран оставалась кнопка «Пуск», перехватывая клики. Если снова активна такая игра —
+    // ставим панель этого монитора сразу под неё (так же её прячет сам Проводник).
+    HWND fg = GetForegroundWindow();
+    RECT fr;
+    if (!fg || !GetWindowRect(fg, &fr))
+        return false;
+    wchar_t fgCls[64] = {};
+    GetClassNameW(fg, fgCls, 64);
+    if (wcscmp(fgCls, L"Shell_TrayWnd") == 0 || wcscmp(fgCls, L"Shell_SecondaryTrayWnd") == 0)
+        return false;
+    const RECT screen{onScreen.left(), onScreen.top(), onScreen.right() + 1, onScreen.bottom() + 1};
+    if (!(fr.left <= screen.left && fr.top <= screen.top && fr.right >= screen.right && fr.bottom >= screen.bottom))
+        return false; // впереди обычное окно — панель задач остаётся как есть
+    struct Ctx { RECT screen; HWND fg; } ctx{screen, fg};
+    EnumWindows([](HWND w, LPARAM lp) -> BOOL {
+        wchar_t cls[64] = {};
+        GetClassNameW(w, cls, 64);
+        if (wcscmp(cls, L"Shell_TrayWnd") != 0 && wcscmp(cls, L"Shell_SecondaryTrayWnd") != 0)
+            return TRUE;
+        auto* c = reinterpret_cast<Ctx*>(lp);
+        RECT r, x;
+        if (GetWindowRect(w, &r) && IntersectRect(&x, &r, &c->screen))
+            SetWindowPos(w, c->fg, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&ctx));
+    return true;
+}
+
 void startSelf(const QString& arg)
 {
     startSelf(QStringList{arg});
